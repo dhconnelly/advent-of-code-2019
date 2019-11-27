@@ -24,7 +24,6 @@ type day struct {
 
 var days = []day{
 	day1,
-	day2,
 }
 
 func openOrDie(path string) *os.File {

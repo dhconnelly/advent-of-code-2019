@@ -2,29 +2,10 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
 )
-
-type testCase struct {
-	input, output string
-}
-
-type part struct {
-	solve     func(io.Reader) string
-	testCases []testCase
-}
-
-type day struct {
-	name  string
-	parts []part
-}
-
-var days = []day{
-	day1,
-}
 
 func openOrDie(path string) *os.File {
 	f, err := os.Open(path)

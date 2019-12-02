@@ -14,6 +14,7 @@ func readData(path string) []int {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// drop the comma
 	toks := strings.Split(string(txt[:len(txt)-1]), ",")
 	data := make([]int, len(toks))
 	for i, tok := range toks {
@@ -51,10 +52,15 @@ func executeWith(data []int, noun, verb int) int {
 
 func main() {
 	data := readData(os.Args[1])
+
+	// part 1
 	fmt.Println(executeWith(data, 12, 2))
+
+	// part 2
 	for noun := 0; noun <= 99; noun++ {
 		for verb := 0; verb <= 99; verb++ {
-			if result := executeWith(data, noun, verb); result == 19690720 {
+			result := executeWith(data, noun, verb)
+			if result == 19690720 {
 				fmt.Println(100*noun + verb)
 				return
 			}

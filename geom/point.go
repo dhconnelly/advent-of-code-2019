@@ -11,7 +11,14 @@ type Pt2 struct {
 var Zero2 Pt2
 
 func (pt1 Pt2) Add(pt2 Pt2) Pt2 {
-	return Pt2{pt1.X + pt2.X, pt1.Y + pt2.Y}
+	pt := pt1
+	pt.TranslateBy(pt2)
+	return pt
+}
+
+func (pt1 *Pt2) TranslateBy(pt2 Pt2) {
+	pt1.X += pt2.X
+	pt1.Y += pt2.Y
 }
 
 func (pt1 Pt2) ManhattanDist(pt2 Pt2) int {

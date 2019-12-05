@@ -1,0 +1,4 @@
+To run today's program:
+
+    go build
+    ./day5 input.txt 1 5

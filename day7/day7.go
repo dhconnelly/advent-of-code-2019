@@ -216,19 +216,23 @@ func executeSeq(data []int, s seq) int {
 }
 
 func executeWithFeedback(data []int, s seq) int {
+	// send the initial input
 	in := make(chan int, 1)
 	in <- 0
 
+	// pipe the amplifiers together
 	out := in
 	for _, phase := range s {
 		out = execute(data, phase, out)
 	}
 
+	// pipe the output back into the input, but keep track of it
 	var o int
 	for o = range out {
 		in <- o
 	}
 
+	// last output is the output signal
 	return o
 }
 
@@ -236,17 +240,6 @@ func maxSignal(data []int, exec func([]int, seq) int, nums []int) int {
 	max := 0
 	for seq := range genSeqs(nums) {
 		out := exec(data, seq)
-		if out > max {
-			max = out
-		}
-	}
-	return max
-}
-
-func maxSignalWithFeedback(data []int) int {
-	max := 0
-	for seq := range genSeqs([]int{5, 6, 7, 8, 9}) {
-		out := executeSeq(data, seq)
 		if out > max {
 			max = out
 		}

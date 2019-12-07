@@ -142,18 +142,18 @@ func copied(data []int) []int {
 	return data2
 }
 
-func execute(data []int, inputs ...int) int {
+func execute(data []int, phase int, signals <-chan int) chan int {
 	data = copied(data)
-	in, out := make(chan int, len(inputs)), make(chan int)
-	for _, input := range inputs {
-		in <- input
-	}
-	close(in)
+	in, out := make(chan int), make(chan int)
+	go func() {
+		in <- phase
+		for signal := range signals {
+			in <- signal
+		}
+		close(in)
+	}()
 	go run(data, in, out)
-	var o int
-	for o = range out {
-	}
-	return o
+	return out
 }
 
 type seq [5]int
@@ -166,12 +166,7 @@ func availMap(avail []int) map[int]bool {
 	return m
 }
 
-func genSeq(
-	s *seq,
-	i int,
-	avail map[int]bool,
-	out chan<- seq,
-) {
+func genSeq(s *seq, i int, avail map[int]bool, out chan<- seq) {
 	if i >= 5 {
 		out <- *s
 		return
@@ -193,7 +188,7 @@ func genSeqs(phases []int) chan seq {
 		ch := make(chan seq)
 		avail := availMap(phases)
 		go genSeq(&s, 0, avail, ch)
-		for i := 0; i < fact(5); i++ {
+		for i := 0; i < fact(len(s)); i++ {
 			s := <-ch
 			out <- s
 		}
@@ -210,20 +205,47 @@ func fact(n int) int {
 }
 
 func executeSeq(data []int, s seq) int {
-	//fmt.Println("seq:", s)
 	out := 0
 	for _, phase := range s {
-		//fmt.Printf("run %d: phase %d, input %d, ", i, phase, out)
-		out = execute(data, phase, out)
-		//fmt.Printf("output %d\n", out)
+		in := make(chan int, 1)
+		in <- out
+		close(in)
+		out = <-execute(data, phase, in)
 	}
 	return out
 }
 
-func maxSignal(data []int) int {
+func executeWithFeedback(data []int, s seq) int {
+	in := make(chan int, 1)
+	in <- 0
+
+	out := in
+	for _, phase := range s {
+		out = execute(data, phase, out)
+	}
+
+	var o int
+	for o = range out {
+		in <- o
+	}
+
+	return o
+}
+
+func maxSignal(data []int, exec func([]int, seq) int, nums []int) int {
 	max := 0
-	for seq := range genSeqs([]int{0, 1, 2, 3, 4}) {
-		//fmt.Println(seq)
+	for seq := range genSeqs(nums) {
+		out := exec(data, seq)
+		if out > max {
+			max = out
+		}
+	}
+	return max
+}
+
+func maxSignalWithFeedback(data []int) int {
+	max := 0
+	for seq := range genSeqs([]int{5, 6, 7, 8, 9}) {
 		out := executeSeq(data, seq)
 		if out > max {
 			max = out
@@ -232,10 +254,8 @@ func maxSignal(data []int) int {
 	return max
 }
 
-func maxSignalWithLoop(data []int) int {
-}
-
 func main() {
 	data := read(os.Args[1])
-	fmt.Println(maxSignal(data))
+	fmt.Println(maxSignal(data, executeSeq, []int{0, 1, 2, 3, 4}))
+	fmt.Println(maxSignal(data, executeWithFeedback, []int{5, 6, 7, 8, 9}))
 }

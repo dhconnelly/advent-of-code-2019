@@ -158,50 +158,26 @@ func execute(data []int, phase int, signals <-chan int) chan int {
 
 type seq [5]int
 
-func availMap(avail []int) map[int]bool {
-	m := make(map[int]bool)
-	for _, n := range avail {
-		m[n] = true
+func genSeqsRec(nums []int, used map[int]bool, until int) []seq {
+	if until == 0 {
+		return []seq{{}}
 	}
-	return m
-}
-
-func genSeq(s *seq, i int, avail map[int]bool, out chan<- seq) {
-	if i >= 5 {
-		out <- *s
-		return
-	}
-	for phase, free := range avail {
-		if free {
-			avail[phase] = false
-			s[i] = phase
-			genSeq(s, i+1, avail, out)
-			avail[phase] = true
+	var seqs []seq
+	for _, num := range nums {
+		if !used[num] {
+			used[num] = true
+			for _, recSeq := range genSeqsRec(nums, used, until-1) {
+				recSeq[until-1] = num
+				seqs = append(seqs, recSeq)
+			}
+			used[num] = false
 		}
 	}
+	return seqs
 }
 
-func genSeqs(phases []int) chan seq {
-	out := make(chan seq)
-	var s seq
-	go func() {
-		ch := make(chan seq)
-		avail := availMap(phases)
-		go genSeq(&s, 0, avail, ch)
-		for i := 0; i < fact(len(s)); i++ {
-			s := <-ch
-			out <- s
-		}
-		close(out)
-	}()
-	return out
-}
-
-func fact(n int) int {
-	if n < 1 {
-		return 1
-	}
-	return n * fact(n-1)
+func genSeqs(nums []int) []seq {
+	return genSeqsRec(nums, make(map[int]bool), len(nums))
 }
 
 func executeSeq(data []int, s seq) int {
@@ -238,7 +214,7 @@ func executeWithFeedback(data []int, s seq) int {
 
 func maxSignal(data []int, exec func([]int, seq) int, nums []int) int {
 	max := 0
-	for seq := range genSeqs(nums) {
+	for _, seq := range genSeqs(nums) {
 		out := exec(data, seq)
 		if out > max {
 			max = out

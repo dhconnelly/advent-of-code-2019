@@ -1,54 +1,48 @@
 package intcode
 
 import (
+	"bufio"
 	"fmt"
-	"log"
+	"io"
+	"os"
 )
 
-type Machine struct {
-	b []int
-}
+type Opcode int
 
-func NewMachine(b []int) *Machine {
-	return &Machine{b}
-}
+const (
+	ADD    Opcode = 1
+	MUL           = 2
+	READ          = 3
+	PRINT         = 4
+	JMPIF         = 5
+	JMPNOT        = 6
+	LT            = 7
+	EQ            = 8
+	HALT          = 99
+)
 
-func (m *Machine) Get(i int) int {
-	return m.b[i]
-}
-
-func (m *Machine) run() error {
-	for i := 0; i < len(m.b); i += 4 {
-		switch m.b[i] {
-		case 1:
-			m.b[m.b[i+3]] = m.b[m.b[i+1]] + m.b[m.b[i+2]]
-		case 2:
-			m.b[m.b[i+3]] = m.b[m.b[i+1]] * m.b[m.b[i+2]]
-		case 99:
-			return nil
-		default:
-			return fmt.Errorf("undefined opcode at position %d: %d", i, m.b[i])
+func ReadProgram(path string) ([]int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	var data []int
+	for r := bufio.NewReader(f); ; {
+		tok, err := r.ReadString(',')
+		if err != nil && err != io.EOF {
+			return nil, fmt.Errorf("bad int in %s: %w", path, err)
+		}
+		if len(tok) > 0 {
+			var i int
+			if _, err := fmt.Sscanf(tok, "%d", &i); err != nil {
+				return nil, fmt.Errorf("bad int in %s: %w", path, err)
+			}
+			data = append(data, i)
+		}
+		if err == io.EOF {
+			break
 		}
 	}
-	return nil
-}
-
-func (m *Machine) Execute(noun, verb int) (int, error) {
-	b := make([]int, len(m.b))
-	copy(b, m.b)
-	m.b[1], m.b[2] = noun, verb
-	if err := m.run(); err != nil {
-		return 0, err
-	}
-	result := m.b[0]
-	m.b = b
-	return result, nil
-}
-
-func (m *Machine) ExecuteOrDie(noun, verb int) int {
-	result, err := m.Execute(noun, verb)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return result
+	return data, nil
 }

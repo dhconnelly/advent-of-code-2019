@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
-	"strings"
 )
 
 type image struct {
@@ -14,20 +13,25 @@ type image struct {
 }
 
 func readImage(path string, width, height int) image {
-	b, err := ioutil.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
 	}
-	txt := strings.TrimSpace(string(b))
-	numLayers := len(txt) / (width * height)
-	img := image{width, height, make([][]byte, numLayers)}
-	for i := 0; i < numLayers; i++ {
-		layerBase := i * width * height
-		for row := 0; row < height; row++ {
-			for col := 0; col < width; col++ {
-				pixel := txt[layerBase+row*width+col] - '0'
-				img.layers[i] = append(img.layers[i], pixel)
+	defer f.Close()
+	img := image{width, height, [][]byte{{}}}
+	b := make([]byte, 1)
+	for {
+		n, err := f.Read(b)
+		if n == 1 && b[0] != '\n' {
+			if len(img.layers[len(img.layers)-1]) == width*height {
+				img.layers = append(img.layers, []byte{})
 			}
+			i := len(img.layers) - 1
+			img.layers[i] = append(img.layers[i], b[0]-'0')
+		} else if err == io.EOF {
+			break
+		} else if err != nil {
+			log.Fatal(err)
 		}
 	}
 	return img

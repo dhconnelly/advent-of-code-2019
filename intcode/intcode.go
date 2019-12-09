@@ -13,6 +13,7 @@ type mode int
 const (
 	pos mode = iota
 	imm
+	rel
 )
 
 type opcode int
@@ -26,6 +27,7 @@ const (
 	jmpnot        = 6
 	lt            = 7
 	eq            = 8
+	adjrel        = 9
 	halt          = 99
 )
 
@@ -38,6 +40,7 @@ var opcodeToArity = map[opcode]int{
 	jmpnot: 2,
 	lt:     3,
 	eq:     3,
+	adjrel: 1,
 	halt:   0,
 }
 
@@ -58,14 +61,17 @@ func parseInstruction(i int) instruction {
 }
 
 type machine struct {
-	data []int
-	in   <-chan int
-	out  chan<- int
+	relbase int
+	data    map[int]int
+	in      <-chan int
+	out     chan<- int
 }
 
 func newMachine(data []int, in <-chan int, out chan<- int) *machine {
-	m := &machine{make([]int, len(data)), in, out}
-	copy(m.data, data)
+	m := &machine{0, make(map[int]int), in, out}
+	for i, v := range data {
+		m.data[i] = v
+	}
 	return m
 }
 
@@ -76,13 +82,22 @@ func (m *machine) get(i int, md mode) int {
 		return m.data[v]
 	case imm:
 		return v
+	case rel:
+		return m.data[v+m.relbase]
 	}
 	log.Fatalf("unknown mode: %d", md)
 	return 0
 }
 
-func (m *machine) set(i, x int) {
-	m.data[i] = x
+func (m *machine) set(i, x int, md mode) {
+	switch md {
+	case pos:
+		m.data[i] = x
+	case rel:
+		m.data[i+m.relbase] = x
+	default:
+		log.Fatalf("bad mode for write: %d", md)
+	}
 }
 
 func (m *machine) read() int {
@@ -100,7 +115,7 @@ var handlers = map[opcode]handler{
 		l := m.get(pc+1, instr.modes[0])
 		r := m.get(pc+2, instr.modes[1])
 		s := m.data[pc+3]
-		m.set(s, l+r)
+		m.set(s, l+r, instr.modes[2])
 		return pc + instr.arity + 1, true
 	},
 
@@ -108,13 +123,13 @@ var handlers = map[opcode]handler{
 		l := m.get(pc+1, instr.modes[0])
 		r := m.get(pc+2, instr.modes[1])
 		s := m.data[pc+3]
-		m.set(s, l*r)
+		m.set(s, l*r, instr.modes[2])
 		return pc + instr.arity + 1, true
 	},
 
 	read: func(m *machine, pc int, instr instruction) (int, bool) {
 		s := m.data[pc+1]
-		m.set(s, m.read())
+		m.set(s, m.read(), instr.modes[0])
 		return pc + instr.arity + 1, true
 	},
 
@@ -149,9 +164,9 @@ var handlers = map[opcode]handler{
 		r := m.get(pc+2, instr.modes[1])
 		s := m.data[pc+3]
 		if l < r {
-			m.set(s, 1)
+			m.set(s, 1, instr.modes[2])
 		} else {
-			m.set(s, 0)
+			m.set(s, 0, instr.modes[2])
 		}
 		return pc + instr.arity + 1, true
 	},
@@ -161,10 +176,16 @@ var handlers = map[opcode]handler{
 		r := m.get(pc+2, instr.modes[1])
 		s := m.data[pc+3]
 		if l == r {
-			m.set(s, 1)
+			m.set(s, 1, instr.modes[2])
 		} else {
-			m.set(s, 0)
+			m.set(s, 0, instr.modes[2])
 		}
+		return pc + instr.arity + 1, true
+	},
+
+	adjrel: func(m *machine, pc int, instr instruction) (int, bool) {
+		v := m.get(pc+1, instr.modes[0])
+		m.relbase += v
 		return pc + instr.arity + 1, true
 	},
 

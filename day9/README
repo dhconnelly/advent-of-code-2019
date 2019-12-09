@@ -1,3 +1,7 @@
 To run this solution:
 
     go run day9.go [input_file] [input_values]
+
+For example, to solve both parts with my input:
+
+    go run day9.go input.txt 1 2

@@ -4,22 +4,195 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"os"
 )
 
-type Opcode int
+type mode int
 
 const (
-	ADD    Opcode = 1
-	MUL           = 2
-	READ          = 3
-	PRINT         = 4
-	JMPIF         = 5
-	JMPNOT        = 6
-	LT            = 7
-	EQ            = 8
-	HALT          = 99
+	pos mode = iota
+	imm
 )
+
+type opcode int
+
+const (
+	add    opcode = 1
+	mul           = 2
+	read          = 3
+	print         = 4
+	jmpif         = 5
+	jmpnot        = 6
+	lt            = 7
+	eq            = 8
+	halt          = 99
+)
+
+var opcodeToArity = map[opcode]int{
+	add:    3,
+	mul:    3,
+	read:   1,
+	print:  1,
+	jmpif:  2,
+	jmpnot: 2,
+	lt:     3,
+	eq:     3,
+	halt:   0,
+}
+
+type instruction struct {
+	op    opcode
+	arity int
+	modes []mode
+}
+
+func parseInstruction(i int) instruction {
+	var in instruction
+	in.op = opcode(i % 100)
+	in.arity = opcodeToArity[in.op]
+	for i /= 100; len(in.modes) < in.arity; i /= 10 {
+		in.modes = append(in.modes, mode(i%10))
+	}
+	return in
+}
+
+type machine struct {
+	data []int
+	in   <-chan int
+	out  chan<- int
+}
+
+func newMachine(data []int, in <-chan int, out chan<- int) *machine {
+	m := &machine{make([]int, len(data)), in, out}
+	copy(m.data, data)
+	return m
+}
+
+func (m *machine) get(i int, md mode) int {
+	v := m.data[i]
+	switch md {
+	case pos:
+		return m.data[v]
+	case imm:
+		return v
+	}
+	log.Fatalf("unknown mode: %d", md)
+	return 0
+}
+
+func (m *machine) set(i, x int) {
+	m.data[i] = x
+}
+
+func (m *machine) read() int {
+	return <-m.in
+}
+
+func (m *machine) write(x int) {
+	m.out <- x
+}
+
+type handler func(m *machine, pc int, instr instruction) (int, bool)
+
+var handlers = map[opcode]handler{
+	add: func(m *machine, pc int, instr instruction) (int, bool) {
+		l := m.get(pc+1, instr.modes[0])
+		r := m.get(pc+2, instr.modes[1])
+		s := m.data[pc+3]
+		m.set(s, l+r)
+		return pc + instr.arity + 1, true
+	},
+
+	mul: func(m *machine, pc int, instr instruction) (int, bool) {
+		l := m.get(pc+1, instr.modes[0])
+		r := m.get(pc+2, instr.modes[1])
+		s := m.data[pc+3]
+		m.set(s, l*r)
+		return pc + instr.arity + 1, true
+	},
+
+	read: func(m *machine, pc int, instr instruction) (int, bool) {
+		s := m.data[pc+1]
+		m.set(s, m.read())
+		return pc + instr.arity + 1, true
+	},
+
+	print: func(m *machine, pc int, instr instruction) (int, bool) {
+		v := m.get(pc+1, instr.modes[0])
+		m.write(v)
+		return pc + instr.arity + 1, true
+	},
+
+	jmpif: func(m *machine, pc int, instr instruction) (int, bool) {
+		l := m.get(pc+1, instr.modes[0])
+		r := m.get(pc+2, instr.modes[1])
+		if l != 0 {
+			return r, true
+		} else {
+			return pc + instr.arity + 1, true
+		}
+	},
+
+	jmpnot: func(m *machine, pc int, instr instruction) (int, bool) {
+		l := m.get(pc+1, instr.modes[0])
+		r := m.get(pc+2, instr.modes[1])
+		if l == 0 {
+			return r, true
+		} else {
+			return pc + instr.arity + 1, true
+		}
+	},
+
+	lt: func(m *machine, pc int, instr instruction) (int, bool) {
+		l := m.get(pc+1, instr.modes[0])
+		r := m.get(pc+2, instr.modes[1])
+		s := m.data[pc+3]
+		if l < r {
+			m.set(s, 1)
+		} else {
+			m.set(s, 0)
+		}
+		return pc + instr.arity + 1, true
+	},
+
+	eq: func(m *machine, pc int, instr instruction) (int, bool) {
+		l := m.get(pc+1, instr.modes[0])
+		r := m.get(pc+2, instr.modes[1])
+		s := m.data[pc+3]
+		if l == r {
+			m.set(s, 1)
+		} else {
+			m.set(s, 0)
+		}
+		return pc + instr.arity + 1, true
+	},
+
+	halt: func(m *machine, pc int, instr instruction) (int, bool) {
+		return 0, false
+	},
+}
+
+func (m *machine) run() {
+	for pc, ok := 0, true; ok && pc < len(m.data); {
+		instr := parseInstruction(m.data[pc])
+		if h, present := handlers[instr.op]; present {
+			pc, ok = h(m, pc, instr)
+		} else {
+			log.Fatalf("bad instr at pos %d: %v", pc, instr)
+		}
+		if !ok {
+			close(m.out)
+		}
+	}
+}
+
+func RunProgram(data []int, in <-chan int) <-chan int {
+	out := make(chan int)
+	m := newMachine(data, in, out)
+	go m.run()
+	return out
+}
 
 func ReadProgram(path string) ([]int, error) {
 	f, err := os.Open(path)

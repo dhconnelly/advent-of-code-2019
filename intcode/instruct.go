@@ -10,32 +10,6 @@ const (
 
 type opcode int
 
-const (
-	add    opcode = 1
-	mul           = 2
-	read          = 3
-	print         = 4
-	jmpif         = 5
-	jmpnot        = 6
-	lt            = 7
-	eq            = 8
-	adjrel        = 9
-	halt          = 99
-)
-
-var opcodeToArity = map[opcode]int64{
-	add:    3,
-	mul:    3,
-	read:   1,
-	print:  1,
-	jmpif:  2,
-	jmpnot: 2,
-	lt:     3,
-	eq:     3,
-	adjrel: 1,
-	halt:   0,
-}
-
 type instruction struct {
 	op    opcode
 	arity int64

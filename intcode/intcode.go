@@ -195,7 +195,7 @@ var handlers = map[opcode]handler{
 }
 
 func (m *machine) run() {
-	for pc, ok := 0, true; ok && pc < len(m.data); {
+	for pc, ok := 0, true; ok; {
 		instr := parseInstruction(m.data[pc])
 		if h, present := handlers[instr.op]; present {
 			pc, ok = h(m, pc, instr)

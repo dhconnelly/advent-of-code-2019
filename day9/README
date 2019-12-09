@@ -1,0 +1,3 @@
+To run this solution:
+
+    go run day9.go [input_file] [input_values]

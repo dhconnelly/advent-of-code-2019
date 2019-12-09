@@ -61,6 +61,7 @@ func parseInstruction(i int64) instruction {
 }
 
 type machine struct {
+	pc      int64
 	relbase int64
 	data    map[int64]int64
 	in      <-chan int64
@@ -68,7 +69,13 @@ type machine struct {
 }
 
 func newMachine(data []int64, in <-chan int64, out chan<- int64) *machine {
-	m := &machine{0, make(map[int64]int64), in, out}
+	m := &machine{
+		pc:      0,
+		relbase: 0,
+		data:    make(map[int64]int64),
+		in:      in,
+		out:     out,
+	}
 	for i, v := range data {
 		m.data[int64(i)] = v
 	}
@@ -108,104 +115,111 @@ func (m *machine) write(x int64) {
 	m.out <- x
 }
 
-type handler func(m *machine, pc int64, instr instruction) (int64, bool)
+type handler func(m *machine, instr instruction) bool
 
 var handlers = map[opcode]handler{
-	add: func(m *machine, pc int64, instr instruction) (int64, bool) {
-		l := m.get(pc+1, instr.modes[0])
-		r := m.get(pc+2, instr.modes[1])
-		s := m.data[pc+3]
+	add: func(m *machine, instr instruction) bool {
+		l := m.get(m.pc+1, instr.modes[0])
+		r := m.get(m.pc+2, instr.modes[1])
+		s := m.data[m.pc+3]
 		m.set(s, l+r, instr.modes[2])
-		return pc + instr.arity + 1, true
+		m.pc += instr.arity + 1
+		return true
 	},
 
-	mul: func(m *machine, pc int64, instr instruction) (int64, bool) {
-		l := m.get(pc+1, instr.modes[0])
-		r := m.get(pc+2, instr.modes[1])
-		s := m.data[pc+3]
+	mul: func(m *machine, instr instruction) bool {
+		l := m.get(m.pc+1, instr.modes[0])
+		r := m.get(m.pc+2, instr.modes[1])
+		s := m.data[m.pc+3]
 		m.set(s, l*r, instr.modes[2])
-		return pc + instr.arity + 1, true
+		m.pc += instr.arity + 1
+		return true
 	},
 
-	read: func(m *machine, pc int64, instr instruction) (int64, bool) {
-		s := m.data[pc+1]
+	read: func(m *machine, instr instruction) bool {
+		s := m.data[m.pc+1]
 		m.set(s, m.read(), instr.modes[0])
-		return pc + instr.arity + 1, true
+		m.pc += instr.arity + 1
+		return true
 	},
 
-	print: func(m *machine, pc int64, instr instruction) (int64, bool) {
-		v := m.get(pc+1, instr.modes[0])
+	print: func(m *machine, instr instruction) bool {
+		v := m.get(m.pc+1, instr.modes[0])
 		m.write(v)
-		return pc + instr.arity + 1, true
+		m.pc += instr.arity + 1
+		return true
 	},
 
-	jmpif: func(m *machine, pc int64, instr instruction) (int64, bool) {
-		l := m.get(pc+1, instr.modes[0])
-		r := m.get(pc+2, instr.modes[1])
+	jmpif: func(m *machine, instr instruction) bool {
+		l := m.get(m.pc+1, instr.modes[0])
+		r := m.get(m.pc+2, instr.modes[1])
 		if l != 0 {
-			return r, true
+			m.pc = r
 		} else {
-			return pc + instr.arity + 1, true
+			m.pc += instr.arity + 1
 		}
+		return true
 	},
 
-	jmpnot: func(m *machine, pc int64, instr instruction) (int64, bool) {
-		l := m.get(pc+1, instr.modes[0])
-		r := m.get(pc+2, instr.modes[1])
+	jmpnot: func(m *machine, instr instruction) bool {
+		l := m.get(m.pc+1, instr.modes[0])
+		r := m.get(m.pc+2, instr.modes[1])
 		if l == 0 {
-			return r, true
+			m.pc = r
 		} else {
-			return pc + instr.arity + 1, true
+			m.pc += instr.arity + 1
 		}
+		return true
 	},
 
-	lt: func(m *machine, pc int64, instr instruction) (int64, bool) {
-		l := m.get(pc+1, instr.modes[0])
-		r := m.get(pc+2, instr.modes[1])
-		s := m.data[pc+3]
+	lt: func(m *machine, instr instruction) bool {
+		l := m.get(m.pc+1, instr.modes[0])
+		r := m.get(m.pc+2, instr.modes[1])
+		s := m.data[m.pc+3]
 		if l < r {
 			m.set(s, 1, instr.modes[2])
 		} else {
 			m.set(s, 0, instr.modes[2])
 		}
-		return pc + instr.arity + 1, true
+		m.pc += instr.arity + 1
+		return true
 	},
 
-	eq: func(m *machine, pc int64, instr instruction) (int64, bool) {
-		l := m.get(pc+1, instr.modes[0])
-		r := m.get(pc+2, instr.modes[1])
-		s := m.data[pc+3]
+	eq: func(m *machine, instr instruction) bool {
+		l := m.get(m.pc+1, instr.modes[0])
+		r := m.get(m.pc+2, instr.modes[1])
+		s := m.data[m.pc+3]
 		if l == r {
 			m.set(s, 1, instr.modes[2])
 		} else {
 			m.set(s, 0, instr.modes[2])
 		}
-		return pc + instr.arity + 1, true
+		m.pc += instr.arity + 1
+		return true
 	},
 
-	adjrel: func(m *machine, pc int64, instr instruction) (int64, bool) {
-		v := m.get(pc+1, instr.modes[0])
+	adjrel: func(m *machine, instr instruction) bool {
+		v := m.get(m.pc+1, instr.modes[0])
 		m.relbase += v
-		return pc + instr.arity + 1, true
+		m.pc += instr.arity + 1
+		return true
 	},
 
-	halt: func(m *machine, pc int64, instr instruction) (int64, bool) {
-		return 0, false
+	halt: func(m *machine, instr instruction) bool {
+		return false
 	},
 }
 
 func (m *machine) run() {
-	for pc, ok := int64(0), true; ok; {
-		instr := parseInstruction(m.data[pc])
+	for ok := true; ok; {
+		instr := parseInstruction(m.data[m.pc])
 		if h, present := handlers[instr.op]; present {
-			pc, ok = h(m, pc, instr)
+			ok = h(m, instr)
 		} else {
-			log.Fatalf("bad instr at pos %d: %v", pc, instr)
-		}
-		if !ok {
-			close(m.out)
+			log.Fatalf("bad instr at pos %d: %v", m.pc, instr)
 		}
 	}
+	close(m.out)
 }
 
 func RunProgram(data []int64, in <-chan int64) <-chan int64 {

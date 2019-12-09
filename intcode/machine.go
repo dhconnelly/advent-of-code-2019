@@ -24,8 +24,20 @@ func newMachine(data []int64, in <-chan int64, out chan<- int64) *machine {
 	return m
 }
 
-func (m *machine) get(i int64, md mode) int64 {
-	v := m.data[i]
+// Retrieves a value according to the specified mode.
+//
+// * In immediate mode, this returns the value stored at the given address.
+//
+// * In position mode, the value stored at the given address is interpreted
+//   as a *pointer* to the value that should be returned.
+//
+// * In relative mode, the machine's current relative base is interpreted as
+//   a pointer, and the value stored at the given address is interpreted as
+//   an offset to that pointer. The value stored at the *resulting* address
+//   is returned.
+//
+func (m *machine) get(addr int64, md mode) int64 {
+	v := m.data[addr]
 	switch md {
 	case pos:
 		return m.data[v]
@@ -38,12 +50,22 @@ func (m *machine) get(i int64, md mode) int64 {
 	return 0
 }
 
-func (m *machine) set(i, x int64, md mode) {
+// Sets a value according to the specified mode.
+//
+// * In position mode, the value stored at the given address specifies the
+//   address to which the value should be written.
+//
+// * In relative mode, the value stored at the given address specifies an
+//   offset to the relative base, and the sum of the offset and the base
+//   specifies the address to which the value should be written.
+//
+func (m *machine) set(addr, val int64, md mode) {
+	v := m.data[addr]
 	switch md {
 	case pos:
-		m.data[i] = x
+		m.data[v] = val
 	case rel:
-		m.data[i+m.relbase] = x
+		m.data[v+m.relbase] = val
 	default:
 		log.Fatalf("bad mode for write: %d", md)
 	}

@@ -8,8 +8,8 @@ import (
 	"strconv"
 )
 
-func run(data []int, input int) {
-	ch := make(chan int, 1)
+func run(data []int64, input int64) {
+	ch := make(chan int64, 1)
 	ch <- input
 	for o := range intcode.RunProgram(data, ch) {
 		fmt.Println(o)
@@ -26,6 +26,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		run(data, x)
+		run(data, int64(x))
 	}
 }

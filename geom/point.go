@@ -30,6 +30,12 @@ func (pt Pt2) ManhattanNorm() int {
 	return pt.ManhattanDist(Zero2)
 }
 
+func (pt1 Pt2) Dist(pt2 Pt2) float64 {
+	pt := pt1
+	pt.TranslateBy(Pt2{-pt2.X, -pt2.Y})
+	return pt.Norm()
+}
+
 func (pt Pt2) Norm() float64 {
 	return math.Sqrt(math.Pow(float64(pt.X), 2.0) + math.Pow(float64(pt.Y), 2.0))
 }

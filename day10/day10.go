@@ -103,20 +103,6 @@ func bestPoint(g grid, counts map[geom.Pt2]int) (geom.Pt2, int) {
 	return best, count
 }
 
-func printCounts(g grid, counts map[geom.Pt2]int) {
-	for i := 0; i < g.height; i++ {
-		for j := 0; j < g.width; j++ {
-			if c := counts[geom.Pt2{j, i}]; c > 0 {
-				fmt.Printf("%3d ", c)
-			} else {
-				fmt.Print("... ")
-			}
-		}
-		fmt.Println()
-		fmt.Println()
-	}
-}
-
 type byAngleFrom struct {
 	p  geom.Pt2
 	ps []geom.Pt2
@@ -176,18 +162,12 @@ func vaporizeAll(g grid, from geom.Pt2, steps []geom.Pt2) []geom.Pt2 {
 	return ordered
 }
 
-func printOrdered(pts []geom.Pt2) {
-	for i, p := range pts {
-		fmt.Println(i+1, p)
-	}
-}
-
 func main() {
 	g := readGrid(os.Args[1])
 	steps := allSteps(g)
 	counts := countVisible(g, steps)
 	best, count := bestPoint(g, counts)
-	fmt.Println(best, count)
+	fmt.Println(count)
 	vaporized := vaporizeAll(g, best, steps)
 	winPt := vaporized[199]
 	fmt.Println(winPt.X*100 + winPt.Y)

@@ -2,6 +2,7 @@ package geom
 
 import (
 	"github.com/dhconnelly/advent-of-code-2019/ints"
+	"math"
 )
 
 type Pt2 struct {
@@ -27,4 +28,8 @@ func (pt1 Pt2) ManhattanDist(pt2 Pt2) int {
 
 func (pt Pt2) ManhattanNorm() int {
 	return pt.ManhattanDist(Zero2)
+}
+
+func (pt Pt2) Norm() float64 {
+	return math.Sqrt(math.Pow(float64(pt.X), 2.0) + math.Pow(float64(pt.Y), 2.0))
 }

@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/dhconnelly/advent-of-code-2019/geom"
 	"github.com/dhconnelly/advent-of-code-2019/intcode"
+	"github.com/dhconnelly/advent-of-code-2019/ints"
 	"log"
+	"math"
 	"os"
 )
 
@@ -74,11 +76,12 @@ func move(cur geom.Pt2, o orientation) geom.Pt2 {
 
 type grid map[geom.Pt2]color
 
-func run(data []int64) grid {
+func run(data []int64, initial color) grid {
 	in := make(chan int64)
 	out := intcode.RunProgram(data, in)
 	g := grid(make(map[geom.Pt2]color))
-	loc := geom.Zero2
+	p := geom.Zero2
+	g[p] = initial
 	o := UP
 loop:
 	for {
@@ -87,14 +90,35 @@ loop:
 			if !ok {
 				break loop
 			}
-			g[loc] = color(c)
+			g[p] = color(c)
 			dir := direction(<-out)
 			o = turn(o, dir)
-			loc = move(loc, o)
-		case in <- int64(g[loc]):
+			p = move(p, o)
+		case in <- int64(g[p]):
 		}
 	}
 	return g
+}
+
+func printGrid(g grid) {
+	minX, minY := math.MaxInt64, math.MaxInt64
+	maxX, maxY := math.MinInt64, math.MinInt64
+	for p, _ := range g {
+		minX, maxX = ints.Min(minX, p.X), ints.Max(maxX, p.X)
+		minY, maxY = ints.Min(minY, p.Y), ints.Max(maxY, p.Y)
+	}
+	for row := maxY; row >= minY; row-- {
+		for col := minX; col <= maxX; col++ {
+			p := geom.Pt2{col, row}
+			switch g[p] {
+			case BLACK:
+				fmt.Print(" ")
+			case WHITE:
+				fmt.Print("X")
+			}
+		}
+		fmt.Println()
+	}
 }
 
 func main() {
@@ -102,6 +126,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	g := run(data)
+	g := run(data, BLACK)
 	fmt.Println(len(g))
+	g = run(data, WHITE)
+	printGrid(g)
 }

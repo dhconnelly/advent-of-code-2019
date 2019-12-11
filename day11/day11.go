@@ -96,9 +96,9 @@ func printGrid(g grid) {
 			p := geom.Pt2{col, row}
 			switch g[p] {
 			case BLACK:
-				fmt.Print("  ")
+				fmt.Print(" ")
 			case WHITE:
-				fmt.Print("XX")
+				fmt.Print("X")
 			}
 		}
 		fmt.Println()

@@ -33,22 +33,6 @@ const (
 	DOWN
 )
 
-func (o orientation) String() string {
-	switch o {
-	case LEFT:
-		return "<"
-	case UP:
-		return "^"
-	case RIGHT:
-		return ">"
-	case DOWN:
-		return "v"
-	default:
-		log.Fatalf("bad orientation: %d", o)
-	}
-	return ""
-}
-
 func turn(cur orientation, dir direction) orientation {
 	switch dir {
 	case TURN_LEFT:
@@ -112,9 +96,9 @@ func printGrid(g grid) {
 			p := geom.Pt2{col, row}
 			switch g[p] {
 			case BLACK:
-				fmt.Print(" ")
+				fmt.Print("  ")
 			case WHITE:
-				fmt.Print("X")
+				fmt.Print("XX")
 			}
 		}
 		fmt.Println()

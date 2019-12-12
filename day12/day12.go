@@ -99,27 +99,7 @@ func energy(ms []moon) int {
 	return total
 }
 
-func findLoop(ms []moon) (int, [4]moon) {
-	states := make(map[[4]moon]bool)
-	st := [4]moon{ms[0], ms[1], ms[2], ms[3]}
-	states[st] = true
-	for i := 0; ; i++ {
-		if i > 0 && i%1000000 == 0 {
-			fmt.Println(i, st)
-		}
-		step(st[:])
-		if states[st] {
-			return i + 1, st
-		} else {
-			states[st] = true
-		}
-	}
-}
-
 func main() {
 	ms := readPoints(os.Args[1])
 	fmt.Println(energy(simulate(ms, 1000)))
-
-	n, state := findLoop(ms)
-	fmt.Println(n, state)
 }

@@ -9,12 +9,12 @@ import (
 )
 
 type state struct {
-	px [4]int16
-	py [4]int16
-	pz [4]int16
-	vx [4]int16
-	vy [4]int16
-	vz [4]int16
+	px [4]int64
+	py [4]int64
+	pz [4]int64
+	vx [4]int64
+	vy [4]int64
+	vz [4]int64
 }
 
 func readState(path string) state {
@@ -46,7 +46,7 @@ func readState(path string) state {
 	return s
 }
 
-func applyGravity(px, vx *[4]int16) {
+func applyGravity(px, vx *[4]int64) {
 	for i := 0; i < len(px)-1; i++ {
 		for j := i + 1; j < len(px); j++ {
 			if px[i] < px[j] {
@@ -60,28 +60,46 @@ func applyGravity(px, vx *[4]int16) {
 	}
 }
 
-func applyVelocity(px, vx *[4]int16) {
+func applyVelocity(px, vx *[4]int64) {
 	for i := range px {
 		px[i] += vx[i]
 	}
 }
 
-func step(px, vx *[4]int16) {
+func step(px, vx *[4]int64) {
 	applyGravity(px, vx)
 	applyVelocity(px, vx)
 }
 
-type key struct {
-	px [4]int16
-	vx [4]int16
-}
-
 type loop struct {
 	n      int64
-	px, vx [4]int16
+	px, vx [4]int64
 }
 
-func findLoopCoord(px, vx [4]int16) chan loop {
+func simulate(s state, n int) state {
+	for i := 0; i < n; i++ {
+		step(&s.px, &s.vx)
+		step(&s.py, &s.vy)
+		step(&s.pz, &s.vz)
+	}
+	return s
+}
+
+func energy(s state) int64 {
+	e := int64(0)
+	for i := 0; i < len(s.px); i++ {
+		pe := ints.Abs64(s.px[i])
+		pe += ints.Abs64(s.py[i])
+		pe += ints.Abs64(s.pz[i])
+		ke := ints.Abs64(s.vx[i])
+		ke += ints.Abs64(s.vy[i])
+		ke += ints.Abs64(s.vz[i])
+		e += pe * ke
+	}
+	return e
+}
+
+func findLoopCoord(px, vx [4]int64) chan loop {
 	ch := make(chan loop)
 	go func() {
 		pi, vi := px, vx
@@ -113,5 +131,6 @@ func findLoop(s state) int64 {
 
 func main() {
 	s := readState(os.Args[1])
+	fmt.Println(energy(simulate(s, 1000)))
 	fmt.Println(findLoop(s))
 }

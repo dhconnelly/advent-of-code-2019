@@ -23,3 +23,7 @@ func (p1 Pt3) Add(p2 Pt3) Pt3 {
 func (p Pt3) ManhattanNorm() int {
 	return ints.Abs(p.X) + ints.Abs(p.Y) + ints.Abs(p.Z)
 }
+
+func (p1 Pt3) Eq(p2 Pt3) bool {
+	return p1.X == p2.X && p1.Y == p2.Y && p1.Z == p2.Z
+}

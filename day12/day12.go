@@ -73,11 +73,18 @@ func applyVelocity(ms []moon) {
 	}
 }
 
-func simulate(ms []moon, n int) {
+func step(ms []moon) {
+	applyGravity(ms)
+	applyVelocity(ms)
+}
+
+func simulate(ms []moon, n int) []moon {
+	ms2 := make([]moon, len(ms))
+	copy(ms2, ms)
 	for i := 0; i < n; i++ {
-		applyGravity(ms)
-		applyVelocity(ms)
+		step(ms2)
 	}
+	return ms2
 }
 
 func moonEnergy(m moon) int {
@@ -92,8 +99,27 @@ func energy(ms []moon) int {
 	return total
 }
 
+func findLoop(ms []moon) (int, [4]moon) {
+	states := make(map[[4]moon]bool)
+	st := [4]moon{ms[0], ms[1], ms[2], ms[3]}
+	states[st] = true
+	for i := 0; ; i++ {
+		if i > 0 && i%1000000 == 0 {
+			fmt.Println(i, st)
+		}
+		step(st[:])
+		if states[st] {
+			return i + 1, st
+		} else {
+			states[st] = true
+		}
+	}
+}
+
 func main() {
 	ms := readPoints(os.Args[1])
-	simulate(ms, 1000)
-	fmt.Println(energy(ms))
+	fmt.Println(energy(simulate(ms, 1000)))
+
+	n, state := findLoop(ms)
+	fmt.Println(n, state)
 }

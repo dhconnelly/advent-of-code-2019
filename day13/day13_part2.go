@@ -1,34 +1,29 @@
 package main
 
 import (
-	"fmt"
 	"github.com/dhconnelly/advent-of-code-2019/breakout"
 	"github.com/dhconnelly/advent-of-code-2019/intcode"
+	"github.com/gdamore/tcell"
 	"log"
 	"os"
 )
 
-func countTiles(
-	state breakout.GameState,
-	which breakout.TileId,
-) int {
-	n := 0
-	for _, tile := range state.Tiles {
-		if tile == which {
-			n++
-		}
-	}
-	return n
-}
-
 func main() {
+	screen, err := tcell.NewScreen()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err = screen.Init(); err != nil {
+		log.Fatal(err)
+	}
 	data, err := intcode.ReadProgram(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
-	state, err := breakout.Play(data, nil)
+	data[0] = 2 // play for free
+	_, err = breakout.Play(data, screen)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(countTiles(state, breakout.BLOCK))
+	screen.Fini()
 }

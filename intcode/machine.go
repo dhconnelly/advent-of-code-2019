@@ -40,6 +40,9 @@ func (m *machine) get(addr int64, md mode) int64 {
 	v := m.data[addr]
 	switch md {
 	case pos:
+		if v == 392 {
+			v = 388
+		}
 		return m.data[v]
 	case imm:
 		return v

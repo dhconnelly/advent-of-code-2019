@@ -64,18 +64,22 @@ func readEvents(screen tcell.Screen) chan *tcell.EventKey {
 func Play(
 	data []int64,
 	screen tcell.Screen,
+	frameDelay time.Duration,
+	joystickInit JoystickPos,
 ) (GameState, error) {
 	in := make(chan int64)
 	defer close(in)
 	out := intcode.RunProgram(data, in)
+	var events chan *tcell.EventKey
 	if screen != nil {
 		screen.Clear()
+		events = readEvents(screen)
 	}
 	state := GameState{
-		Tiles: ScreenTiles(make(map[geom.Pt2]TileId)),
+		Tiles:    ScreenTiles(make(map[geom.Pt2]TileId)),
+		Joystick: joystickInit,
 	}
-	tick := time.Tick(300000000)
-	events := readEvents(screen)
+	tick := time.Tick(frameDelay)
 
 loop:
 	for {
@@ -94,7 +98,7 @@ loop:
 			select {
 			case in <- int64(state.Joystick):
 			default:
-				state.Joystick = NEUTRAL
+				state.Joystick = joystickInit
 				continue
 			}
 
@@ -102,6 +106,7 @@ loop:
 			if !ok {
 				break loop
 			}
+
 			y, z := <-out, <-out
 			if x == -1 && y == 0 {
 				if z > 0 {

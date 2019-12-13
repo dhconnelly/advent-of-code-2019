@@ -8,6 +8,18 @@ const (
 	rel
 )
 
+func (md mode) String() string {
+	switch md {
+	case pos:
+		return "pos"
+	case imm:
+		return "imm"
+	case rel:
+		return "rel"
+	}
+	return ""
+}
+
 type opcode int
 
 type instruction struct {

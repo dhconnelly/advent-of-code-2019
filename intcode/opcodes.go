@@ -13,6 +13,32 @@ const (
 	halt          = 99
 )
 
+func (o opcode) String() string {
+	switch o {
+	case add:
+		return "add"
+	case mul:
+		return "mul"
+	case read:
+		return "read"
+	case print:
+		return "print"
+	case jmpif:
+		return "jmpif"
+	case jmpnot:
+		return "jmpnot"
+	case lt:
+		return "lt"
+	case eq:
+		return "eq"
+	case adjrel:
+		return "adjrel"
+	case halt:
+		return "halt"
+	}
+	return ""
+}
+
 var opcodeToArity = map[opcode]int64{
 	add:    3,
 	mul:    3,

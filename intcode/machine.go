@@ -1,6 +1,9 @@
 package intcode
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 type machine struct {
 	pc      int64
@@ -72,16 +75,28 @@ func (m *machine) set(addr, val int64, md mode) {
 }
 
 func (m *machine) read() int64 {
-	return <-m.in
+	v := <-m.in
+	//log.Println("read value:", v) // uncomment for debugging (TODO: use a flag)
+	return v
 }
 
-func (m *machine) write(x int64) {
-	m.out <- x
+func (m *machine) write(v int64) {
+	m.out <- v
+	//log.Println("wrote value:", v) // uncomment for debugging (TODO: use a flag)
+}
+
+func (m *machine) log(instr instruction) {
+	line := fmt.Sprintf("[%3d] %s", m.pc, instr.op)
+	for i := int64(0); i < instr.arity; i++ {
+		line += fmt.Sprintf(" %s(%d)", instr.modes[i], m.data[m.pc+i+1])
+	}
+	log.Println(line)
 }
 
 func (m *machine) run() {
 	for ok := true; ok; {
 		instr := parseInstruction(m.data[m.pc])
+		// m.log(instr)  // uncomment for debugging (TODO: use a flag)
 		if h, present := handlers[instr.op]; present {
 			ok = h(m, instr)
 		} else {

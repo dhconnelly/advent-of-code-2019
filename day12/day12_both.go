@@ -9,12 +9,7 @@ import (
 )
 
 type state struct {
-	px [4]int64
-	py [4]int64
-	pz [4]int64
-	vx [4]int64
-	vy [4]int64
-	vz [4]int64
+	px, py, pz, vx, vy, vz [4]int64
 }
 
 func readState(path string) state {
@@ -71,11 +66,6 @@ func step(px, vx *[4]int64) {
 	applyVelocity(px, vx)
 }
 
-type loop struct {
-	n      int64
-	px, vx [4]int64
-}
-
 func simulate(s state, n int) state {
 	for i := 0; i < n; i++ {
 		step(&s.px, &s.vx)
@@ -99,34 +89,29 @@ func energy(s state) int64 {
 	return e
 }
 
-func findLoopCoord(px, vx [4]int64) chan loop {
-	ch := make(chan loop)
-	go func() {
-		pi, vi := px, vx
-		for i := int64(1); ; i++ {
-			step(&px, &vx)
-			if px == pi && vx == vi {
-				ch <- loop{i, px, vx}
-				close(ch)
-				return
-			}
-		}
-		close(ch)
-	}()
-	return ch
-}
-
-func lcm3(a, b, c int64) int64 {
+func lcm(a, b, c int64) int64 {
 	lcm := a * (b / ints.Gcd64(a, b))
 	return c * (lcm / ints.Gcd64(lcm, c))
 }
 
+func findLoopCoord(px, vx [4]int64, ch chan<- int64) {
+	pi, vi := px, vx
+	for i := int64(1); ; i++ {
+		step(&px, &vx)
+		if px == pi && vx == vi {
+			ch <- i
+			return
+		}
+	}
+}
+
 func findLoop(s state) int64 {
-	ch1 := findLoopCoord(s.px, s.vx)
-	ch2 := findLoopCoord(s.py, s.vy)
-	ch3 := findLoopCoord(s.pz, s.vz)
-	l1, l2, l3 := <-ch1, <-ch2, <-ch3
-	return lcm3(l1.n, l2.n, l3.n)
+	ch := make(chan int64)
+	defer close(ch)
+	go findLoopCoord(s.px, s.vx, ch)
+	go findLoopCoord(s.py, s.vy, ch)
+	go findLoopCoord(s.pz, s.vz, ch)
+	return lcm(<-ch, <-ch, <-ch)
 }
 
 func main() {

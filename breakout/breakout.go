@@ -97,8 +97,8 @@ loop:
 		case <-tick:
 			select {
 			case in <- int64(state.Joystick):
-			default:
 				state.Joystick = joystickInit
+			default:
 				continue
 			}
 

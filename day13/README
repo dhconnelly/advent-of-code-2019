@@ -1,0 +1,4 @@
+To run today's solution:
+
+    patch -p1 -d .. < day13.patch
+    go run day13.go input.txt

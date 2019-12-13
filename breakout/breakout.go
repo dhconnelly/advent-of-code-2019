@@ -22,7 +22,7 @@ var tileToRune = map[TileId]rune{
 	EMPTY:  ' ',
 	WALL:   '@',
 	BLOCK:  'X',
-	PADDLE: '_',
+	PADDLE: '-',
 	BALL:   'o',
 }
 
@@ -37,36 +37,14 @@ const (
 type ScreenTiles map[geom.Pt2]TileId
 
 type GameState struct {
-	Score int
-	Tiles ScreenTiles
+	Joystick JoystickPos
+	Score    int
+	Tiles    ScreenTiles
 }
-
-/*
-func copied(tiles ScreenTiles) ScreenTiles {
-	copied := ScreenTiles(make(map[geom.Pt2]TileId))
-	for k, v := range tiles {
-		copied[k] = v
-	}
-	return copied
-}
-
-func updateScreen(frames chan ScreenTiles) {
-	for {
-		frame, ok := <-frames
-		if !ok {
-			return
-		}
-		fmt.Println("drawing frame:", frame)
-	}
-}
-*/
 
 func draw(screen tcell.Screen, x, y int, tile TileId) {
 	screen.SetContent(x, y, tileToRune[tile], nil, 0)
 	screen.Show()
-}
-
-func erase(screen tcell.Screen) {
 }
 
 func readEvents(screen tcell.Screen) chan *tcell.EventKey {
@@ -88,19 +66,38 @@ func Play(
 	screen tcell.Screen,
 ) (GameState, error) {
 	in := make(chan int64)
+	defer close(in)
 	out := intcode.RunProgram(data, in)
-
-	state := GameState{
-		Tiles: ScreenTiles(make(map[geom.Pt2]TileId)),
-	}
-	joystick := NEUTRAL
-
 	if screen != nil {
 		screen.Clear()
 	}
+	state := GameState{
+		Tiles: ScreenTiles(make(map[geom.Pt2]TileId)),
+	}
+	tick := time.Tick(160000000)
+	events := readEvents(screen)
+
 loop:
-	for _ = range time.Tick(33000000) {
+	for {
 		select {
+		case e := <-events:
+			switch e.Key() {
+			case tcell.KeyCtrlC:
+				break loop
+			case tcell.KeyLeft:
+				state.Joystick = LEFT
+			case tcell.KeyRight:
+				state.Joystick = RIGHT
+			}
+
+		case <-tick:
+			select {
+			case in <- int64(state.Joystick):
+			default:
+				state.Joystick = NEUTRAL
+				continue
+			}
+
 		case x, ok := <-out:
 			if !ok {
 				break loop
@@ -115,18 +112,8 @@ loop:
 					draw(screen, int(x), int(y), tile)
 				}
 			}
-		case e := <-readEvents(screen):
-			switch e.Key() {
-			case tcell.KeyCtrlC:
-				break loop
-			case tcell.KeyLeft:
-				joystick = LEFT
-			case tcell.KeyRight:
-				joystick = RIGHT
-			}
-		case in <- int64(joystick):
 		}
 	}
-	close(in)
+
 	return state, nil
 }

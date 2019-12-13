@@ -26,6 +26,16 @@ var tileToRune = map[TileId]rune{
 	BALL:   'o',
 }
 
+var backgroundStyle = tcell.StyleDefault.Background(tcell.ColorLightSlateGrey)
+
+var tileToStyle = map[TileId]tcell.Style{
+	EMPTY:  backgroundStyle,
+	WALL:   backgroundStyle.Foreground(tcell.ColorNames["black"]),
+	BLOCK:  backgroundStyle.Foreground(tcell.ColorNames["blue"]),
+	PADDLE: backgroundStyle.Foreground(tcell.ColorNames["red"]),
+	BALL:   backgroundStyle.Foreground(tcell.ColorNames["yellow"]),
+}
+
 type JoystickPos int
 
 const (
@@ -43,7 +53,7 @@ type GameState struct {
 }
 
 func draw(screen tcell.Screen, x, y int, tile TileId) {
-	screen.SetContent(x, y, tileToRune[tile], nil, 0)
+	screen.SetContent(x, y, tileToRune[tile], nil, tileToStyle[tile])
 	screen.Show()
 }
 

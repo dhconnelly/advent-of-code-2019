@@ -74,7 +74,7 @@ func Play(
 	state := GameState{
 		Tiles: ScreenTiles(make(map[geom.Pt2]TileId)),
 	}
-	tick := time.Tick(160000000)
+	tick := time.Tick(300000000)
 	events := readEvents(screen)
 
 loop:
@@ -104,7 +104,9 @@ loop:
 			}
 			y, z := <-out, <-out
 			if x == -1 && y == 0 {
-				state.Score = int(z)
+				if z > 0 {
+					state.Score = int(z)
+				}
 			} else {
 				tile := TileId(z)
 				state.Tiles[geom.Pt2{int(x), int(y)}] = tile

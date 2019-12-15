@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"github.com/dhconnelly/advent-of-code-2019/ints"
 )
 
 type quant struct {
@@ -30,7 +32,7 @@ func readQuant(s string) quant {
 
 func readReactions(r io.Reader) map[string]reaction {
 	scan := bufio.NewScanner(r)
-	reactions := make(map[string]reaction)
+	reacts := make(map[string]reaction)
 	for scan.Scan() {
 		line := scan.Text()
 		parts := strings.Split(line, "=>")
@@ -39,12 +41,51 @@ func readReactions(r io.Reader) map[string]reaction {
 		for _, tok := range strings.Split(parts[0], ",") {
 			ins = append(ins, readQuant(tok))
 		}
-		reactions[out.chem] = reaction{out, ins}
+		reacts[out.chem] = reaction{out, ins}
 	}
 	if err := scan.Err(); err != nil {
 		log.Fatal(err)
 	}
-	return reactions
+	return reacts
+}
+
+func divceil(m, n int) int {
+	q := m / n
+	if m%n == 0 {
+		return q
+	}
+	return q + 1
+}
+
+func oreNeeded(
+	chem string, amt int,
+	reacts map[string]reaction,
+	waste map[string]int,
+) int {
+	if chem == "ORE" {
+		return amt
+	}
+	// reuse excess production before building more
+	if avail := waste[chem]; avail > 0 {
+		reclaimed := ints.Min(amt, avail)
+		waste[chem] -= reclaimed
+		amt -= reclaimed
+	}
+	if amt == 0 {
+		return 0
+	}
+	// build as much as necessary and store the excess
+	react := reacts[chem]
+	k := 1
+	if amt > react.out.amt {
+		k = divceil(amt, react.out.amt)
+	}
+	waste[chem] += k*react.out.amt - amt
+	ore := 0
+	for _, in := range react.ins {
+		ore += oreNeeded(in.chem, k*in.amt, reacts, waste)
+	}
+	return ore
 }
 
 func main() {
@@ -53,6 +94,6 @@ func main() {
 		log.Fatal(err)
 	}
 	defer f.Close()
-	reactions := readReactions(f)
-	fmt.Println(reactions)
+	reacts := readReactions(f)
+	fmt.Println(oreNeeded("FUEL", 1, reacts, map[string]int{}))
 }

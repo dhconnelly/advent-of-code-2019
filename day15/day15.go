@@ -55,21 +55,6 @@ func (stat status) String() string {
 	return ""
 }
 
-func turnRight(prev direction) direction {
-	switch prev {
-	case NORTH:
-		return EAST
-	case SOUTH:
-		return WEST
-	case WEST:
-		return NORTH
-	case EAST:
-		return SOUTH
-	}
-	log.Fatal("bad direction:", prev)
-	return 0
-}
-
 var updates = map[direction]geom.Pt2{
 	NORTH: geom.Pt2{0, 1},
 	SOUTH: geom.Pt2{0, -1},
@@ -77,19 +62,24 @@ var updates = map[direction]geom.Pt2{
 	EAST:  geom.Pt2{1, 0},
 }
 
-func neighbors(p geom.Pt2) []geom.Pt2 {
-	return []geom.Pt2{
-		p.Add(updates[NORTH]), p.Add(updates[SOUTH]),
-		p.Add(updates[WEST]), p.Add(updates[EAST]),
+func neighbors(nd node) []node {
+	var nbrs []node
+	for k := range updates {
+		var nbr node
+		nbr.p = nd.p.Add(updates[k])
+		nbr.path = append(copied(nd.path), nbr.p)
+		nbrs = append(nbrs, nbr)
 	}
+	return nbrs
 }
 
-func update(cur geom.Pt2, dir direction) geom.Pt2 {
-	return cur.Add(updates[dir])
+type node struct {
+	p    geom.Pt2
+	path []geom.Pt2
 }
 
-func copied(path []direction) []direction {
-	path2 := make([]direction, len(path))
+func copied(path []geom.Pt2) []geom.Pt2 {
+	path2 := make([]geom.Pt2, len(path))
 	copy(path2, path)
 	return path2
 }
@@ -108,64 +98,106 @@ func dirOf(to, from geom.Pt2) direction {
 	return INVALID
 }
 
+func reversed(path []geom.Pt2) []geom.Pt2 {
+	reversed := make([]geom.Pt2, len(path))
+	for i, p := range path {
+		reversed[len(path)-i-1] = p
+	}
+	return reversed
+}
+
 type droid struct {
 	in   chan<- int64
 	out  <-chan int64
-	cur  geom.Pt2
-	dist map[geom.Pt2]int
-	path []geom.Pt2
+	path map[geom.Pt2][]geom.Pt2
+	stat map[geom.Pt2]status
+	next []node
 }
 
 func NewDroid(in chan<- int64, out <-chan int64) *droid {
-	return &droid{in: in, out: out, dist: make(map[geom.Pt2]int)}
+	return &droid{
+		in:   in,
+		out:  out,
+		path: make(map[geom.Pt2][]geom.Pt2),
+		stat: make(map[geom.Pt2]status),
+	}
 }
 
-func (d *droid) move(dir direction) status {
-	if dir == INVALID {
+func (d *droid) step(to, from geom.Pt2) status {
+	if to == from {
 		return OK
 	}
+	if to.ManhattanDist(from) > 1 {
+		log.Fatalf("ManhattanDist(%v, %v) > 1", to, from)
+	}
+	dir := dirOf(to, from)
 	d.in <- int64(dir)
 	return status(<-d.out)
 }
 
-func (d *droid) visit(p geom.Pt2) {
-	fmt.Println("visiting:", p)
-	fmt.Println("path:", d.path)
-	dir := dirOf(p, d.cur)
-	switch d.move(dir) {
-	case WALL:
-		fmt.Println("wall at:", p)
-		return
-	case OK:
-		fmt.Println("moved to:", p)
-	case OXGN:
-		fmt.Println("oxygen at:", p)
+func (d *droid) move(path []geom.Pt2) status {
+	from := path[0]
+	s := OK
+	for _, to := range path {
+		if s = d.step(to, from); s == WALL {
+			break
+		}
+		from = to
 	}
-	if dist, ok := d.dist[p]; !ok || len(d.path) < dist {
-		d.dist[p] = len(d.path)
-	} else {
+	return s
+}
+
+func (d *droid) visit(nd node) {
+	fmt.Println("visiting:", nd)
+
+	// try to move to the node if possible
+	stat := d.move(nd.path)
+	if d.stat[nd.p] = stat; stat == WALL {
+		fmt.Println("wall:", nd.p)
 		return
 	}
-	d.cur = p
-	fmt.Println("dist:", d.dist[d.cur])
-	for _, nbr := range neighbors(d.cur) {
-		fmt.Println("next neighbor:", nbr)
-		if len(d.path) > 0 && d.path[len(d.path)-1] == nbr {
+
+	// store the path for this node
+	fmt.Println("path:", nd.path)
+	d.path[nd.p] = nd.path
+
+	// add neighbors to the visit queue
+	for _, nbr := range neighbors(nd) {
+		if _, ok := d.path[nbr.p]; ok {
 			continue
 		}
-		d.path = append(d.path, nbr)
-		d.visit(nbr)
-		d.path = d.path[:len(d.path)-1]
+		fmt.Println("next neighbor:", nbr)
+		d.next = append(d.next, nbr)
 	}
+
+	// go back to where we came from
+	if s := d.move(reversed(nd.path)); s != OK {
+		log.Fatalf("can't return by path: %v, %s", nd.path, s)
+	}
+}
+
+func (d *droid) findOxygen() int {
+	for len(d.next) > 0 {
+		fmt.Println()
+		fmt.Println("q:", d.next)
+		fmt.Println("stat:", d.stat)
+		next := d.next[0]
+		d.next = d.next[1:]
+		d.visit(next)
+		if d.stat[next.p] == OXGN {
+			return len(d.path[next.p])
+		}
+	}
+	log.Fatal("not found")
+	return 0
 }
 
 func findOxygen(data []int64) int {
 	in := make(chan int64)
 	out := intcode.RunProgram(data, in)
 	d := NewDroid(in, out)
-	d.visit(geom.Zero2)
-	fmt.Println(d.dist)
-	return 0
+	d.next = append(d.next, node{geom.Zero2, []geom.Pt2{geom.Zero2}})
+	return d.findOxygen()
 }
 
 func main() {

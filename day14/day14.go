@@ -65,6 +65,7 @@ func oreNeeded(
 	if chem == "ORE" {
 		return amt
 	}
+
 	// reuse excess production before building more
 	if avail := waste[chem]; avail > 0 {
 		reclaimed := ints.Min(amt, avail)
@@ -74,6 +75,7 @@ func oreNeeded(
 	if amt == 0 {
 		return 0
 	}
+
 	// build as much as necessary and store the excess
 	react := reacts[chem]
 	k := 1
@@ -81,11 +83,30 @@ func oreNeeded(
 		k = divceil(amt, react.out.amt)
 	}
 	waste[chem] += k*react.out.amt - amt
+
+	// recursively find the ore needed for the ingredients
 	ore := 0
 	for _, in := range react.ins {
 		ore += oreNeeded(in.chem, k*in.amt, reacts, waste)
 	}
 	return ore
+}
+
+func maxFuel(ore int, reacts map[string]reaction) int {
+	lower, upper := 0, ore
+	for target := upper / 2; lower != target; {
+		needed := oreNeeded("FUEL", target, reacts, map[string]int{})
+		if needed > ore {
+			upper = target
+			target = lower + (target-lower)/2
+		} else if needed < ore {
+			lower = target
+			target = target + (upper-target)/2
+		} else {
+			return target
+		}
+	}
+	return lower
 }
 
 func main() {
@@ -96,4 +117,5 @@ func main() {
 	defer f.Close()
 	reacts := readReactions(f)
 	fmt.Println(oreNeeded("FUEL", 1, reacts, map[string]int{}))
+	fmt.Println(maxFuel(1000000000000, reacts))
 }

@@ -98,13 +98,23 @@ type node struct {
 }
 
 func shortestPaths(from geom.Pt2, m map[geom.Pt2]status) map[geom.Pt2]int {
-	q := []node{{from, 0}}
+	// track which nodes we've visited and how far away they are
 	visited := make(map[geom.Pt2]bool)
 	dist := make(map[geom.Pt2]int)
+
+	// keep a queue of the next nodes to visit, in sorted order, with closer
+	// nodes always before further ones
+	q := []node{{from, 0}}
 	var nd node
+
+	// continue as long as the queue is empty
 	for len(q) > 0 {
+		// pop the head off the queue and record its distance
 		nd, q = q[0], q[1:]
 		dist[nd.p] = nd.n
+
+		// add each unvisited neighbor to the end of the visit queue, with
+		// distance one greater than the distance of the current node
 		for _, dp := range directions {
 			nbr := nd.p.Add(dp)
 			if visited[nbr] {

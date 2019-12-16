@@ -19,21 +19,6 @@ const (
 	EAST  direction = 4
 )
 
-func (dir direction) String() string {
-	switch dir {
-	case NORTH:
-		return "NORTH"
-	case SOUTH:
-		return "SOUTH"
-	case WEST:
-		return "WEST"
-	case EAST:
-		return "EAST"
-	}
-	log.Fatal("bad direction:", dir)
-	return ""
-}
-
 type status int
 
 const (
@@ -41,19 +26,6 @@ const (
 	OK   status = 1
 	OXGN status = 2
 )
-
-func (stat status) String() string {
-	switch stat {
-	case WALL:
-		return "WALL"
-	case OK:
-		return "OK"
-	case OXGN:
-		return "OXGN"
-	}
-	log.Fatalf("unknown status: %d", stat)
-	return ""
-}
 
 var directions = map[direction]geom.Pt2{
 	NORTH: geom.Pt2{0, 1},
@@ -102,6 +74,15 @@ func (d *droid) visit(p geom.Pt2, m map[geom.Pt2]status) {
 	}
 }
 
+func explore(prog []int64) map[geom.Pt2]status {
+	in := make(chan int64)
+	out := intcode.RunProgram(prog, in)
+	d := droid{in, out}
+	m := map[geom.Pt2]status{geom.Zero2: OK}
+	d.visit(geom.Zero2, m)
+	return m
+}
+
 func bounds(m map[geom.Pt2]status) (minX, maxX, minY, maxY int) {
 	minX, maxX = math.MaxInt64, math.MinInt64
 	minY, maxY = math.MaxInt64, math.MinInt64
@@ -140,13 +121,42 @@ func printMap(m map[geom.Pt2]status) {
 	}
 }
 
-func findOxygen(data []int64) int {
-	in := make(chan int64)
-	out := intcode.RunProgram(data, in)
-	d := droid{in, out}
-	m := map[geom.Pt2]status{geom.Zero2: OK}
-	d.visit(geom.Zero2, m)
-	printMap(m)
+func findOxygen(m map[geom.Pt2]status) geom.Pt2 {
+	for p, s := range m {
+		if s == OXGN {
+			return p
+		}
+	}
+	log.Fatal("oxygen not found")
+	return geom.Zero2
+}
+
+type node struct {
+	p geom.Pt2
+	n int
+}
+
+func shortestPath(from, to geom.Pt2, m map[geom.Pt2]status) int {
+	q := []node{{geom.Zero2, 0}}
+	visited := make(map[geom.Pt2]bool)
+	for len(q) > 0 {
+		nd := q[0]
+		q = q[1:]
+		for _, dp := range directions {
+			nbr := nd.p.Add(dp)
+			if nbr == to {
+				return nd.n + 1
+			}
+			if visited[nbr] {
+				continue
+			}
+			visited[nbr] = true
+			if m[nbr] != WALL {
+				q = append(q, node{nbr, nd.n + 1})
+			}
+		}
+	}
+	log.Fatalf("no path from %v to %v", from, to)
 	return 0
 }
 
@@ -155,5 +165,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(findOxygen(data))
+	m := explore(data)
+	p := findOxygen(m)
+	fmt.Println(shortestPath(geom.Zero2, p, m))
 }

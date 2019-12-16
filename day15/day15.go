@@ -100,7 +100,7 @@ func printMap(m map[geom.Pt2]status) {
 	for y := maxY; y >= minY; y-- {
 		for x := minX; x <= maxX; x++ {
 			if x == 0 && y == 0 {
-				fmt.Print("O")
+				fmt.Print("X")
 				continue
 			}
 			s, ok := m[geom.Pt2{x, y}]
@@ -114,7 +114,7 @@ func printMap(m map[geom.Pt2]status) {
 			case OK:
 				fmt.Print(".")
 			case OXGN:
-				fmt.Print("@")
+				fmt.Print("O")
 			}
 		}
 		fmt.Println()
@@ -136,17 +136,16 @@ type node struct {
 	n int
 }
 
-func shortestPath(from, to geom.Pt2, m map[geom.Pt2]status) int {
-	q := []node{{geom.Zero2, 0}}
+func shortestPaths(from geom.Pt2, m map[geom.Pt2]status) map[geom.Pt2]int {
+	q := []node{{from, 0}}
 	visited := make(map[geom.Pt2]bool)
+	dist := make(map[geom.Pt2]int)
+	var nd node
 	for len(q) > 0 {
-		nd := q[0]
-		q = q[1:]
+		nd, q = q[0], q[1:]
+		dist[nd.p] = nd.n
 		for _, dp := range directions {
 			nbr := nd.p.Add(dp)
-			if nbr == to {
-				return nd.n + 1
-			}
 			if visited[nbr] {
 				continue
 			}
@@ -156,8 +155,19 @@ func shortestPath(from, to geom.Pt2, m map[geom.Pt2]status) int {
 			}
 		}
 	}
-	log.Fatalf("no path from %v to %v", from, to)
-	return 0
+	return dist
+}
+
+func shortestPath(from, to geom.Pt2, m map[geom.Pt2]status) int {
+	return shortestPaths(from, m)[to]
+}
+
+func longestPath(from geom.Pt2, m map[geom.Pt2]status) int {
+	max := 0
+	for _, n := range shortestPaths(from, m) {
+		max = ints.Max(max, n)
+	}
+	return max
 }
 
 func main() {
@@ -168,4 +178,5 @@ func main() {
 	m := explore(data)
 	p := findOxygen(m)
 	fmt.Println(shortestPath(geom.Zero2, p, m))
+	fmt.Println(longestPath(p, m))
 }

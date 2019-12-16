@@ -6,17 +6,7 @@ import (
 	"github.com/dhconnelly/advent-of-code-2019/intcode"
 	"github.com/dhconnelly/advent-of-code-2019/ints"
 	"log"
-	"math"
 	"os"
-)
-
-type direction int
-
-const (
-	NORTH direction = 1
-	SOUTH direction = 2
-	WEST  direction = 3
-	EAST  direction = 4
 )
 
 type status int
@@ -27,12 +17,14 @@ const (
 	OXGN status = 2
 )
 
-var directions = map[direction]geom.Pt2{
-	NORTH: geom.Pt2{0, 1},
-	SOUTH: geom.Pt2{0, -1},
-	WEST:  geom.Pt2{-1, 0},
-	EAST:  geom.Pt2{1, 0},
-}
+type direction int
+
+const (
+	NORTH direction = 1
+	SOUTH direction = 2
+	WEST  direction = 3
+	EAST  direction = 4
+)
 
 func opposite(dir direction) direction {
 	switch dir {
@@ -47,6 +39,13 @@ func opposite(dir direction) direction {
 	}
 	log.Fatal("bad direction:", dir)
 	return 0
+}
+
+var directions = map[direction]geom.Pt2{
+	NORTH: geom.Pt2{0, 1},
+	SOUTH: geom.Pt2{0, -1},
+	WEST:  geom.Pt2{-1, 0},
+	EAST:  geom.Pt2{1, 0},
 }
 
 type droid struct {
@@ -81,44 +80,6 @@ func explore(prog []int64) map[geom.Pt2]status {
 	m := map[geom.Pt2]status{geom.Zero2: OK}
 	d.visit(geom.Zero2, m)
 	return m
-}
-
-func bounds(m map[geom.Pt2]status) (minX, maxX, minY, maxY int) {
-	minX, maxX = math.MaxInt64, math.MinInt64
-	minY, maxY = math.MaxInt64, math.MinInt64
-	for p := range m {
-		minX = ints.Min(minX, p.X)
-		maxX = ints.Max(maxX, p.X)
-		minY = ints.Min(minY, p.Y)
-		maxY = ints.Max(maxY, p.Y)
-	}
-	return
-}
-
-func printMap(m map[geom.Pt2]status) {
-	minX, maxX, minY, maxY := bounds(m)
-	for y := maxY; y >= minY; y-- {
-		for x := minX; x <= maxX; x++ {
-			if x == 0 && y == 0 {
-				fmt.Print("X")
-				continue
-			}
-			s, ok := m[geom.Pt2{x, y}]
-			if !ok {
-				fmt.Print(" ")
-				continue
-			}
-			switch s {
-			case WALL:
-				fmt.Print("#")
-			case OK:
-				fmt.Print(".")
-			case OXGN:
-				fmt.Print("O")
-			}
-		}
-		fmt.Println()
-	}
 }
 
 func findOxygen(m map[geom.Pt2]status) geom.Pt2 {

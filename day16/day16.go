@@ -89,23 +89,17 @@ func extractMessage(signal []int, reps, phases, offset, digits int) []int {
 	msg := sliceSignal(signal, offset, len(signal)*reps)
 	n := len(msg)
 
-	fmt.Println("findings coefs")
-	coefs := make([][]int, n)
-	for i := 0; i < n; i++ {
-		coefs[i] = make([]int, n-i)
-		for j := i; j < n; j++ {
-			coefs[i][j-i] = coef(offset+i+1, offset+j+1)
-		}
+	// for offset >= len(signal)/2, coef(i) = 0 for i < offset/2 and 1 for i >=
+	// offset/2
+	if offset < len(signal)*reps/2 {
+		log.Fatal("offset too great:", offset)
 	}
 
 	scratch := make([]int, n)
 	for ; phases > 0; phases-- {
-		fmt.Println("phase:", phases)
-		for i := 0; i < n; i++ {
-			sum := 0
-			for j := i; j < n; j++ {
-				sum += (coefs[i][j-i] * msg[j])
-			}
+		sum := 0
+		for i := n - 1; i >= 0; i-- {
+			sum += msg[i]
 			scratch[i] = ints.Abs(sum) % 10
 		}
 		msg, scratch = scratch, msg
@@ -126,7 +120,6 @@ func main() {
 	const phases = 100
 	const reps = 10000
 
-	//fmt.Println(toSignal(fft(v, phases)[:digits]))
-	fmt.Println("offset:", i)
+	fmt.Println(toSignal(fft(v, phases)[:digits]))
 	fmt.Println(toSignal(extractMessage(v, reps, phases, i, digits)))
 }

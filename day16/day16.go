@@ -95,14 +95,12 @@ func extractMessage(signal []int, reps, phases, offset, digits int) []int {
 		log.Fatal("offset too great:", offset)
 	}
 
-	scratch := make([]int, n)
 	for ; phases > 0; phases-- {
 		sum := 0
 		for i := n - 1; i >= 0; i-- {
 			sum += msg[i]
-			scratch[i] = ints.Abs(sum) % 10
+			msg[i] = ints.Abs(sum) % 10
 		}
-		msg, scratch = scratch, msg
 	}
 
 	return msg[:digits]

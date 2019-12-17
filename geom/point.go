@@ -39,3 +39,17 @@ func (pt1 Pt2) Dist(pt2 Pt2) float64 {
 func (pt Pt2) Norm() float64 {
 	return math.Sqrt(math.Pow(float64(pt.X), 2.0) + math.Pow(float64(pt.Y), 2.0))
 }
+
+var directions = []Pt2{
+	Pt2{0, 1}, Pt2{0, -1},
+	Pt2{-1, 0}, Pt2{1, 0},
+}
+
+func (p Pt2) ManhattanNeighbors() []Pt2 {
+	return []Pt2{
+		p.Add(directions[0]),
+		p.Add(directions[1]),
+		p.Add(directions[2]),
+		p.Add(directions[3]),
+	}
+}

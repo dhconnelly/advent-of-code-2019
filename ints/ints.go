@@ -48,3 +48,9 @@ func Gcd64(m, n int64) int64 {
 	}
 	return Gcd64(n, m%n)
 }
+
+func Copied64(x []int64) []int64 {
+	y := make([]int64, len(x))
+	copy(y, x)
+	return y
+}

@@ -40,16 +40,46 @@ func (pt Pt2) Norm() float64 {
 	return math.Sqrt(math.Pow(float64(pt.X), 2.0) + math.Pow(float64(pt.Y), 2.0))
 }
 
-var directions = []Pt2{
-	Pt2{0, 1}, Pt2{0, -1},
-	Pt2{-1, 0}, Pt2{1, 0},
+type Direction rune
+
+const (
+	None  Direction = 0
+	Up    Direction = '^'
+	Down  Direction = 'v'
+	Right Direction = '>'
+	Left  Direction = '<'
+)
+
+var Directions = map[Direction]Pt2{
+	Up:    Pt2{0, 1},
+	Down:  Pt2{0, -1},
+	Left:  Pt2{-1, 0},
+	Right: Pt2{1, 0},
+}
+
+func (from Pt2) DirectionTo(to Pt2) Direction {
+	switch {
+	case from.X < to.X:
+		return Right
+	case to.X < from.X:
+		return Left
+	case from.Y < to.Y:
+		return Down
+	case to.Y < from.Y:
+		return Up
+	}
+	return 0
+}
+
+func (p Pt2) Go(dir Direction) Pt2 {
+	return p.Add(Directions[dir])
 }
 
 func (p Pt2) ManhattanNeighbors() []Pt2 {
 	return []Pt2{
-		p.Add(directions[0]),
-		p.Add(directions[1]),
-		p.Add(directions[2]),
-		p.Add(directions[3]),
+		p.Add(Directions[Up]),
+		p.Add(Directions[Down]),
+		p.Add(Directions[Left]),
+		p.Add(Directions[Right]),
 	}
 }

@@ -20,9 +20,6 @@ func parseVec(b []byte) []int {
 }
 
 func coef(row, col int) int {
-	if col < row {
-		return 0
-	}
 	switch (col / row) % 4 {
 	case 0:
 		return 0
@@ -73,14 +70,10 @@ func offset(b []byte) int {
 	return i
 }
 
-func indexRepeated(signal []int, i int) int {
-	return signal[i%len(signal)]
-}
-
 func sliceSignal(signal []int, from, to int) []int {
 	sliced := make([]int, to-from)
 	for i := range sliced {
-		sliced[i] = indexRepeated(signal, from+i)
+		sliced[i] = signal[(from+i)%len(signal)]
 	}
 	return sliced
 }
@@ -89,8 +82,8 @@ func extractMessage(signal []int, reps, phases, offset, digits int) []int {
 	msg := sliceSignal(signal, offset, len(signal)*reps)
 	n := len(msg)
 
-	// for offset >= len(signal)/2, coef(i) = 0 for i < offset/2 and 1 for i >=
-	// offset/2
+	// for offset >= len(signal)/2, coef(i) = 0 for i < offset/2 and 1 for
+	// i >= offset/2
 	if offset < len(signal)*reps/2 {
 		log.Fatal("offset too great:", offset)
 	}

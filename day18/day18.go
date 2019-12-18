@@ -16,6 +16,14 @@ const (
 	open = '.'
 )
 
+func doorFor(key rune) rune {
+	return key - 32
+}
+
+func keyFor(door rune) rune {
+	return door + 32
+}
+
 func isDoor(c rune) bool {
 	return 'A' <= c && c <= 'Z'
 }
@@ -30,18 +38,39 @@ type maze struct {
 	grid   map[geom.Pt2]rune
 }
 
+func (m maze) clone() maze {
+	m2 := maze{m.width, m.height, make(map[geom.Pt2]rune)}
+	for k, v := range m.grid {
+		m2.grid[k] = v
+	}
+	return m2
+}
+
+func (m maze) keys() []rune {
+	var keys []rune
+	for _, v := range m.grid {
+		if isKey(v) {
+			keys = append(keys, v)
+		}
+	}
+	return keys
+}
+
+func (m *maze) clear(p geom.Pt2) {
+	m.grid[p] = open
+}
+
 func (m maze) at(p geom.Pt2) rune {
 	return m.grid[p]
 }
 
-func (m maze) find(c rune) geom.Pt2 {
+func (m maze) find(c rune) (geom.Pt2, bool) {
 	for k, v := range m.grid {
 		if v == c {
-			return k
+			return k, true
 		}
 	}
-	log.Fatalf("not found in maze: %c", c)
-	return geom.Zero2
+	return geom.Zero2, false
 }
 
 func (m maze) adjacent(p geom.Pt2) []geom.Pt2 {
@@ -71,11 +100,42 @@ func readMaze(r io.Reader) maze {
 	return m
 }
 
-type explorer struct {
-	m     maze
-	keys  map[rune]bool
+type keyPath struct {
 	path  []rune
 	steps int
+}
+
+func findKeyPaths(m maze, from geom.Pt2) []keyPath {
+	var paths []keyPath
+	ch := make(chan keyPath)
+	e := explorer{m: m, keys: make(map[rune]bool), out: ch}
+	go e.findKeys(from)
+	for path := range ch {
+		fmt.Println("path:", path)
+		paths = append(paths, path)
+	}
+	return paths
+}
+
+type explorer struct {
+	m    maze
+	keys map[rune]bool
+	path keyPath
+	out  chan<- keyPath
+}
+
+func (e explorer) clone() explorer {
+	e2 := explorer{m: e.m.clone(), out: e.out}
+	e2.keys = make(map[rune]bool)
+	for k, v := range e.keys {
+		e2.keys[k] = v
+	}
+	e2.path.steps = e.path.steps
+	e2.path.path = make([]rune, len(e.path.path))
+	for i, c := range e.path.path {
+		e2.path.path[i] = c
+	}
+	return e2
 }
 
 type node struct {
@@ -116,6 +176,55 @@ func (e explorer) reachableKeys(from geom.Pt2) []node {
 	return keys
 }
 
+func (e *explorer) findKeys(from geom.Pt2) {
+	//fmt.Println("findKeys:", from)
+	//fmt.Println("have:", e.keys)
+	//fmt.Println("remaining:", e.m.keys())
+
+	// if no more keys remaining, send path on channel
+	if len(e.m.keys()) == 0 {
+		e.out <- e.path
+		return
+	}
+
+	// find current reachable keys
+	reachable := e.reachableKeys(from)
+
+	// if none, nothing to do
+	if len(reachable) == 0 {
+		//fmt.Println("none reachable! dying")
+		return
+	}
+
+	// if more than one, fork and choose one per clone
+	if len(reachable) > 1 {
+		for _, nd := range reachable[1:] {
+			//fmt.Println("forking")
+			clone := e.clone()
+			clone.takeKey(nd)
+			go clone.findKeys(nd.p)
+		}
+	}
+
+	// take the first in this clone
+	nd := reachable[0]
+	e.takeKey(nd)
+
+	// continue from the key location
+	e.findKeys(nd.p)
+}
+
+func (e *explorer) takeKey(nd node) {
+	e.path.path = append(e.path.path, nd.c)
+	e.path.steps += nd.d
+	e.keys[nd.c] = true
+	e.m.clear(nd.p)
+	door, ok := e.m.find(doorFor(nd.c))
+	if ok {
+		e.m.clear(door)
+	}
+}
+
 func main() {
 	f, err := os.Open(os.Args[1])
 	if err != nil {
@@ -124,9 +233,7 @@ func main() {
 	defer f.Close()
 
 	m := readMaze(f)
-	p := m.find(door)
-	e := explorer{m: m, keys: make(map[rune]bool)}
-	fmt.Println(e.reachableKeys(p))
-	fmt.Println(e.reachableKeys(geom.Pt2{4, 3}))
-	fmt.Println(e.reachableKeys(geom.Pt2{7, 7}))
+	p, _ := m.find(door)
+	paths := findKeyPaths(m, p)
+	fmt.Println(paths)
 }

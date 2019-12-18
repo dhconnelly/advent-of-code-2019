@@ -30,6 +30,10 @@ type maze struct {
 	grid   map[geom.Pt2]rune
 }
 
+func (m maze) at(p geom.Pt2) rune {
+	return m.grid[p]
+}
+
 func (m maze) find(c rune) geom.Pt2 {
 	for k, v := range m.grid {
 		if v == c {
@@ -67,6 +71,51 @@ func readMaze(r io.Reader) maze {
 	return m
 }
 
+type explorer struct {
+	m     maze
+	keys  map[rune]bool
+	path  []rune
+	steps int
+}
+
+type node struct {
+	p geom.Pt2
+	c rune
+	d int
+}
+
+func (nd node) String() string {
+	return fmt.Sprintf("(%v, %c, dist=%d)", nd.p, nd.c, nd.d)
+}
+
+func (e explorer) reachableKeys(from geom.Pt2) []node {
+	// breadth-first-search from current point
+	var keys []node
+	var nd node
+	visited := make(map[geom.Pt2]bool)
+	q := []node{{from, e.m.at(from), 0}}
+	for len(q) > 0 {
+		nd, q = q[0], q[1:]
+		visited[nd.p] = true
+
+		// if we're at a key or a door, go no further
+		if c := e.m.at(nd.p); isKey(c) {
+			keys = append(keys, nd)
+			continue
+		} else if isDoor(c) {
+			continue
+		}
+
+		// otherwise keep going
+		for _, nbr := range e.m.adjacent(nd.p) {
+			if !visited[nbr] {
+				q = append(q, node{nbr, e.m.at(nbr), nd.d + 1})
+			}
+		}
+	}
+	return keys
+}
+
 func main() {
 	f, err := os.Open(os.Args[1])
 	if err != nil {
@@ -76,7 +125,8 @@ func main() {
 
 	m := readMaze(f)
 	p := m.find(door)
-	fmt.Println(m)
-	fmt.Println(p)
-	fmt.Println(m.adjacent(m.adjacent(p)[0]))
+	e := explorer{m: m, keys: make(map[rune]bool)}
+	fmt.Println(e.reachableKeys(p))
+	fmt.Println(e.reachableKeys(geom.Pt2{4, 3}))
+	fmt.Println(e.reachableKeys(geom.Pt2{7, 7}))
 }

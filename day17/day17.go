@@ -10,13 +10,9 @@ import (
 	"github.com/dhconnelly/advent-of-code-2019/ints"
 )
 
-type elem rune
-
-const SPACE elem = '.'
-
 type grid struct {
 	height, width int
-	g             map[geom.Pt2]elem
+	g             map[geom.Pt2]rune
 }
 
 func (g grid) neighbors(p geom.Pt2) []geom.Pt2 {
@@ -30,7 +26,7 @@ func (g grid) neighbors(p geom.Pt2) []geom.Pt2 {
 }
 
 func readGridFrom(out <-chan int64) (grid, bool) {
-	g := grid{g: make(map[geom.Pt2]elem)}
+	g := grid{g: make(map[geom.Pt2]rune)}
 	var width int
 	for ch := range out {
 		if ch == '\n' {
@@ -43,7 +39,7 @@ func readGridFrom(out <-chan int64) (grid, bool) {
 				return g, true
 			}
 		}
-		g.g[geom.Pt2{width, g.height}] = elem(ch)
+		g.g[geom.Pt2{width, g.height}] = rune(ch)
 		width++
 	}
 	return grid{}, false

@@ -225,6 +225,62 @@ func (e *explorer) takeKey(nd node) {
 	}
 }
 
+func values(m map[geom.Pt2]node) []node {
+	var vs []node
+	for _, v := range m {
+		vs = append(vs, v)
+	}
+	return vs
+}
+
+func reachable(m maze, from geom.Pt2) []node {
+	var nd node
+	nds := make(map[geom.Pt2]node)
+	visited := make(map[geom.Pt2]bool)
+	q := []node{{from, m.at(from), 0}}
+	for len(q) > 0 {
+		nd, q = q[0], q[1:]
+		visited[nd.p] = true
+		for _, nbr := range m.adjacent(nd.p) {
+			if visited[nbr] {
+				continue
+			}
+			next := node{nbr, m.at(nbr), nd.d + 1}
+			if c := m.at(nbr); isKey(c) || isDoor(c) {
+				if prev, ok := nds[nbr]; !ok || next.d < prev.d {
+					nds[nbr] = next
+				}
+				continue
+			}
+			q = append(q, next)
+		}
+	}
+	return values(nds)
+}
+
+func reachability(m maze, from geom.Pt2) map[rune][]rune {
+	g := make(map[rune][]rune)
+	q := []geom.Pt2{from}
+	for len(q) > 0 {
+		from, q = q[0], q[1:]
+		c := m.at(from)
+		if _, ok := g[c]; ok {
+			continue
+		}
+		for _, nbr := range reachable(m, from) {
+			g[c] = append(g[c], nbr.c)
+			q = append(q, nbr.p)
+		}
+	}
+	return g
+}
+
+func printReachability(m map[rune][]rune) {
+	for k, v := range m {
+		fmt.Printf("[%c]: %s\n", k, string(v))
+	}
+}
+
 func main() {
 	f, err := os.Open(os.Args[1])
 	if err != nil {
@@ -234,6 +290,6 @@ func main() {
 
 	m := readMaze(f)
 	p, _ := m.find(door)
-	paths := findKeyPaths(m, p)
-	fmt.Println(paths)
+	g := reachability(m, p)
+	printReachability(g)
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/dhconnelly/advent-of-code-2019/geom"
 )
@@ -105,27 +106,49 @@ type keyPath struct {
 	steps int
 }
 
-func findKeyPaths(m maze, from geom.Pt2) []keyPath {
+func shortestKeyPath(m maze, from geom.Pt2) keyPath {
 	var paths []keyPath
-	ch := make(chan keyPath)
-	e := explorer{m: m, keys: make(map[rune]bool), out: ch}
-	go e.findKeys(from)
-	for path := range ch {
-		fmt.Println("path:", path)
+	e := explorer{m: m, keys: make(map[rune]bool), shortest: &shortestPath{}}
+	for path := range e.findKeys(from) {
 		paths = append(paths, path)
 	}
-	return paths
+	var shortest keyPath
+	for _, path := range paths {
+		if shortest.steps == 0 || shortest.steps > path.steps {
+			shortest = path
+		}
+	}
+	return shortest
+}
+
+type shortestPath struct {
+	sync.RWMutex
+	path keyPath
+}
+
+func (sp *shortestPath) length() int {
+	sp.RLock()
+	defer sp.RUnlock()
+	return sp.path.steps
+}
+
+func (sp *shortestPath) updateIfShorter(path keyPath) {
+	sp.Lock()
+	defer sp.Unlock()
+	if path.steps < sp.path.steps {
+		sp.path = path
+	}
 }
 
 type explorer struct {
-	m    maze
-	keys map[rune]bool
-	path keyPath
-	out  chan<- keyPath
+	m        maze
+	keys     map[rune]bool
+	path     keyPath
+	shortest *shortestPath
 }
 
 func (e explorer) clone() explorer {
-	e2 := explorer{m: e.m.clone(), out: e.out}
+	e2 := explorer{m: e.m.clone(), shortest: e.shortest}
 	e2.keys = make(map[rune]bool)
 	for k, v := range e.keys {
 		e2.keys[k] = v
@@ -176,42 +199,64 @@ func (e explorer) reachableKeys(from geom.Pt2) []node {
 	return keys
 }
 
-func (e *explorer) findKeys(from geom.Pt2) {
+func (e *explorer) findKeys(from geom.Pt2) <-chan keyPath {
 	//fmt.Println("findKeys:", from)
 	//fmt.Println("have:", e.keys)
 	//fmt.Println("remaining:", e.m.keys())
-
-	// if no more keys remaining, send path on channel
-	if len(e.m.keys()) == 0 {
-		e.out <- e.path
-		return
-	}
-
-	// find current reachable keys
-	reachable := e.reachableKeys(from)
-
-	// if none, nothing to do
-	if len(reachable) == 0 {
-		//fmt.Println("none reachable! dying")
-		return
-	}
-
-	// if more than one, fork and choose one per clone
-	if len(reachable) > 1 {
-		for _, nd := range reachable[1:] {
-			//fmt.Println("forking")
-			clone := e.clone()
-			clone.takeKey(nd)
-			go clone.findKeys(nd.p)
+	ch := make(chan keyPath)
+	go func() {
+		if sp := e.shortest.length(); sp > 0 && sp < e.path.steps {
+			close(ch)
+			return
 		}
-	}
 
-	// take the first in this clone
-	nd := reachable[0]
-	e.takeKey(nd)
+		// if no more keys remaining, send path on channel
+		if len(e.m.keys()) == 0 {
+			e.shortest.updateIfShorter(e.path)
+			ch <- e.path
+			close(ch)
+			return
+		}
 
-	// continue from the key location
-	e.findKeys(nd.p)
+		// find current reachable keys
+		reachable := e.reachableKeys(from)
+
+		// if none, nothing to do
+		if len(reachable) == 0 {
+			close(ch)
+			return
+		}
+
+		// if more than one, fork and choose one per clone
+		done := make(chan bool)
+		if len(reachable) > 1 {
+			for _, nd := range reachable[1:] {
+				//fmt.Println("forking")
+				clone := e.clone()
+				go func() {
+					clone.takeKey(nd)
+					for path := range clone.findKeys(nd.p) {
+						ch <- path
+					}
+					done <- true
+				}()
+			}
+		}
+
+		// take the first in this clone
+		nd := reachable[0]
+		e.takeKey(nd)
+
+		// continue from the key location
+		for path := range e.findKeys(nd.p) {
+			ch <- path
+		}
+		for i := 0; i < len(reachable)-1; i++ {
+			<-done
+		}
+		close(ch)
+	}()
+	return ch
 }
 
 func (e *explorer) takeKey(nd node) {
@@ -290,6 +335,5 @@ func main() {
 
 	m := readMaze(f)
 	p, _ := m.find(door)
-	g := reachability(m, p)
-	printReachability(g)
+	fmt.Println(shortestKeyPath(m, p))
 }

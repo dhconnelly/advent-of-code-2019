@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"sort"
 
 	"github.com/dhconnelly/advent-of-code-2019/geom"
 	"github.com/dhconnelly/advent-of-code-2019/ints"
@@ -205,10 +206,50 @@ func copied(x []rune) []rune {
 	return y
 }
 
-func shortestPathTaking(c rune, g graph, from []rune, remainingKeys, fromSteps, limit int) ([]rune, int) {
-	fmt.Printf("taking %c (steps=%d, limit = %d, remaining = %d)\n", c, fromSteps, limit, remainingKeys)
+func shouldVisitNeighbor(nbr rune, nbrs map[rune]int, after map[rune]map[rune]bool) bool {
+	if !isKey(nbr) {
+		return false
+	}
+	for nbr2 := range nbrs {
+		if after[nbr2][nbr] {
+			return false
+		}
+	}
+	return true
+}
+
+type byAfter struct {
+	nodes []bfsNode
+	after map[rune]map[rune]bool
+}
+
+func (ba *byAfter) Len() int {
+	return len(ba.nodes)
+}
+
+func (ba *byAfter) Swap(i, j int) {
+	ba.nodes[i], ba.nodes[j] = ba.nodes[j], ba.nodes[i]
+}
+
+func (ba *byAfter) Less(i, j int) bool {
+	return ba.after[ba.nodes[i].c][ba.nodes[j].c]
+}
+
+func prioritySort(nbrs map[rune]int, after map[rune]map[rune]bool) []bfsNode {
+	nodes := byAfter{after: after}
+	for nbr, d := range nbrs {
+		if isKey(nbr) {
+			nodes.nodes = append(nodes.nodes, bfsNode{c: nbr, d: d})
+		}
+	}
+	sort.Sort(&nodes)
+	return nodes.nodes
+}
+
+func shortestPathTaking(c rune, g graph, after map[rune]map[rune]bool, from []rune, remainingKeys, fromSteps, limit int) ([]rune, int) {
+	//fmt.Printf("taking %c (steps=%d, limit = %d, remaining = %d)\n", c, fromSteps, limit, remainingKeys)
 	if fromSteps >= limit {
-		fmt.Println("over limit!")
+		//fmt.Println("over limit!")
 		return nil, 0
 	}
 	if remainingKeys == 0 {
@@ -217,20 +258,17 @@ func shortestPathTaking(c rune, g graph, from []rune, remainingKeys, fromSteps, 
 	}
 
 	nbrs := g.takeKey(c)
-	fmt.Printf("neighbors of %c: %v\n", c, nbrs)
+	//fmt.Printf("neighbors of %c: %v\n", c, nbrs)
 
 	var shortestPath []rune
 	shortest := 0
-	for nbr, d := range nbrs {
-		if !isKey(nbr) {
+	for _, nd := range prioritySort(nbrs, after) {
+		if fromSteps+nd.d >= limit {
 			continue
 		}
-		if fromSteps+d >= limit {
-			continue
-		}
-		fmt.Printf("branch: taking %c\n", nbr)
-		path, steps := shortestPathTaking(nbr, g.clone(), append(copied(from), nbr), remainingKeys-1, fromSteps+d, limit)
-		fmt.Printf("branch for %c done. steps = %d\n", nbr, steps)
+		//fmt.Printf("branch: taking %c\n", nbr)
+		path, steps := shortestPathTaking(nd.c, g.clone(), after, append(copied(from), nd.c), remainingKeys-1, fromSteps+nd.d, limit)
+		//fmt.Printf("branch for %c done. steps = %d\n", nbr, steps)
 		if len(path) > 0 && (shortest == 0 || steps < shortest) {
 			shortest, shortestPath = steps, path
 			limit = ints.Min(shortest, limit)
@@ -239,8 +277,135 @@ func shortestPathTaking(c rune, g graph, from []rune, remainingKeys, fromSteps, 
 	return shortestPath, shortest
 }
 
-func shortestPath(g graph) ([]rune, int) {
-	return shortestPathTaking(entr, g, nil, len(g.keys()), 0, math.MaxInt64)
+func shortestKeyPath(g graph, after map[rune]map[rune]bool) ([]rune, int) {
+	return shortestPathTaking(entr, g, after, nil, len(g.keys()), 0, math.MaxInt64)
+}
+
+type pathNode struct {
+	c    rune
+	path []rune
+}
+
+func shortestPath(from, to rune, g graph) []rune {
+	var first pathNode
+	q := []pathNode{{from, nil}}
+	v := map[rune]bool{from: true}
+	for len(q) > 0 {
+		first, q = q[0], q[1:]
+		for nbr := range g[first.c] {
+			if v[nbr] {
+				continue
+			}
+			v[nbr] = true
+			path := append(copied(first.path), nbr)
+			if nbr == to {
+				return path
+			}
+			q = append(q, pathNode{nbr, path})
+		}
+	}
+	return nil
+}
+
+func shortestPaths(to rune, g graph) map[rune][]rune {
+	paths := make(map[rune][]rune)
+	for c := range g {
+		paths[c] = shortestPath(c, to, g)
+	}
+	return paths
+}
+
+func printPaths(p map[rune][]rune) {
+	for c, path := range p {
+		fmt.Printf("[%c] ", c)
+		for _, n := range path {
+			fmt.Printf("%c ", n)
+		}
+		fmt.Println()
+	}
+}
+
+func doorPaths(p map[rune][]rune) map[rune][]rune {
+	dp := make(map[rune][]rune)
+	for c, path := range p {
+		for _, n := range path {
+			if isDoor(n) {
+				dp[c] = append(dp[c], n)
+			}
+		}
+	}
+	return dp
+}
+
+func dependents(paths map[rune][]rune) map[rune]map[rune]bool {
+	after := make(map[rune]map[rune]bool)
+	for c, path := range paths {
+		if !isDoor(c) {
+			continue
+		}
+		k := keyFor(c)
+		after[k] = make(map[rune]bool)
+		for _, next := range path {
+			if next == entr {
+				break
+			}
+			if isKey(next) {
+				after[k][next] = true
+			}
+		}
+	}
+	return after
+}
+
+func requirements(g graph) map[rune][]rune {
+	paths := shortestPaths(entr, g)
+	reqs := make(map[rune][]rune)
+	for _, key := range g.keys() {
+		path := paths[key]
+		for _, c := range path {
+			if isDoor(c) {
+				reqs[key] = append(reqs[key], keyFor(c))
+			}
+		}
+	}
+	return reqs
+}
+
+func printPath(path []rune) {
+	fmt.Println(string(path))
+}
+
+func avail(reqs []rune, keys map[rune]bool) bool {
+	for _, req := range reqs {
+		if keys[req] {
+			return false
+		}
+	}
+	return true
+}
+
+func orders(keys map[rune]bool, reqs map[rune][]rune, path []rune) [][]rune {
+	if len(keys) == len(path) {
+		return [][]rune{path}
+	}
+	var all [][]rune
+	for key, ok := range keys {
+		if !ok || !avail(reqs[key], keys) {
+			continue
+		}
+		keys[key] = false
+		all = append(all, orders(keys, reqs, append(copied(path), key))...)
+		keys[key] = true
+	}
+	return all
+}
+
+func keySet(keys []rune) map[rune]bool {
+	set := make(map[rune]bool)
+	for _, key := range keys {
+		set[key] = true
+	}
+	return set
 }
 
 func main() {
@@ -253,5 +418,21 @@ func main() {
 	m := readMaze(f)
 	g := reachableGraph(m)
 	printGraph(g)
-	fmt.Println(shortestPath(g))
+
+	p := shortestPaths(entr, g)
+	printPaths(p)
+
+	after := dependents(p)
+	fmt.Println(after)
+
+	reqs := requirements(g)
+	fmt.Println(reqs)
+	fmt.Println(orders(keySet(g.keys()), reqs, nil))
+
+	//order := flatten(g, after)
+	//printPath(order)
+
+	//path, steps := shortestKeyPath(g, after)
+	//printPath(path)
+	//fmt.Println(steps)
 }

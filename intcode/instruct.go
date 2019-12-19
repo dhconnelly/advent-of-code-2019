@@ -1,14 +1,14 @@
 package intcode
 
-type mode int
+type Mode int
 
 const (
-	pos mode = iota
+	pos Mode = iota
 	imm
 	rel
 )
 
-func (md mode) String() string {
+func (md Mode) String() string {
 	switch md {
 	case pos:
 		return "pos"
@@ -20,20 +20,20 @@ func (md mode) String() string {
 	return ""
 }
 
-type opcode int
+type Opcode int
 
 type instruction struct {
-	op    opcode
+	op    Opcode
 	arity int64
-	modes []mode
+	modes []Mode
 }
 
 func parseInstruction(i int64) instruction {
 	var in instruction
-	in.op = opcode(i % 100)
+	in.op = Opcode(i % 100)
 	in.arity = opcodeToArity[in.op]
 	for i /= 100; int64(len(in.modes)) < in.arity; i /= 10 {
-		in.modes = append(in.modes, mode(i%10))
+		in.modes = append(in.modes, Mode(i%10))
 	}
 	return in
 }

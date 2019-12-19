@@ -41,7 +41,7 @@ func newMachine(data []int64, in <-chan int64, out chan<- int64, dbg bool) *mach
 //   as an offset to that pointer. The value stored at the *resulting*
 //   address is returned.
 //
-func (m *machine) get(addr int64, md mode) int64 {
+func (m *machine) get(addr int64, md Mode) int64 {
 	v := m.data[addr]
 	switch md {
 	case pos:
@@ -64,7 +64,7 @@ func (m *machine) get(addr int64, md mode) int64 {
 //   an offset to the relative base, and the sum of the offset and the
 //   base specifies the address to which the value should be written.
 //
-func (m *machine) set(addr, val int64, md mode) {
+func (m *machine) set(addr, val int64, md Mode) {
 	v := m.data[addr]
 	switch md {
 	case pos:

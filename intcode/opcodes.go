@@ -1,7 +1,7 @@
 package intcode
 
 const (
-	add    opcode = 1
+	add    Opcode = 1
 	mul           = 2
 	read          = 3
 	print         = 4
@@ -13,7 +13,33 @@ const (
 	halt          = 99
 )
 
-func (o opcode) String() string {
+func (o Opcode) isValid() bool {
+	switch o {
+	case add:
+		fallthrough
+	case mul:
+		fallthrough
+	case read:
+		fallthrough
+	case print:
+		fallthrough
+	case jmpif:
+		fallthrough
+	case jmpnot:
+		fallthrough
+	case lt:
+		fallthrough
+	case eq:
+		fallthrough
+	case adjrel:
+		fallthrough
+	case halt:
+		return true
+	}
+	return false
+}
+
+func (o Opcode) String() string {
 	switch o {
 	case add:
 		return "add"
@@ -39,7 +65,7 @@ func (o opcode) String() string {
 	return ""
 }
 
-var opcodeToArity = map[opcode]int64{
+var opcodeToArity = map[Opcode]int64{
 	add:    3,
 	mul:    3,
 	read:   1,
@@ -54,7 +80,7 @@ var opcodeToArity = map[opcode]int64{
 
 type handler func(m *machine, instr instruction) bool
 
-var handlers = map[opcode]handler{
+var handlers = map[Opcode]handler{
 	add: func(m *machine, instr instruction) bool {
 		l := m.get(m.pc+1, instr.modes[0])
 		r := m.get(m.pc+2, instr.modes[1])

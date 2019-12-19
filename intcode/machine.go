@@ -11,15 +11,17 @@ type machine struct {
 	data    map[int64]int64
 	in      <-chan int64
 	out     chan<- int64
+	dbg     bool
 }
 
-func newMachine(data []int64, in <-chan int64, out chan<- int64) *machine {
+func newMachine(data []int64, in <-chan int64, out chan<- int64, dbg bool) *machine {
 	m := &machine{
 		pc:      0,
 		relbase: 0,
 		data:    make(map[int64]int64),
 		in:      in,
 		out:     out,
+		dbg:     dbg,
 	}
 	for i, v := range data {
 		m.data[int64(i)] = v
@@ -76,13 +78,17 @@ func (m *machine) set(addr, val int64, md mode) {
 
 func (m *machine) read() int64 {
 	v := <-m.in
-	//log.Println("read value:", v) // uncomment for debugging (TODO: use a flag)
+	if m.dbg {
+		log.Println("read value:", v) // uncomment for debugging (TODO: use a flag)
+	}
 	return v
 }
 
 func (m *machine) write(v int64) {
 	m.out <- v
-	//log.Println("wrote value:", v) // uncomment for debugging (TODO: use a flag)
+	if m.dbg {
+		log.Println("wrote value:", v) // uncomment for debugging (TODO: use a flag)
+	}
 }
 
 func (m *machine) log(instr instruction) {
@@ -96,7 +102,9 @@ func (m *machine) log(instr instruction) {
 func (m *machine) run() {
 	for ok := true; ok; {
 		instr := parseInstruction(m.data[m.pc])
-		// m.log(instr)  // uncomment for debugging (TODO: use a flag)
+		if m.dbg {
+			m.log(instr)
+		}
 		if h, present := handlers[instr.op]; present {
 			ok = h(m, instr)
 		} else {

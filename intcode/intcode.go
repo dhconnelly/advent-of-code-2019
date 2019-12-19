@@ -8,8 +8,12 @@ import (
 )
 
 func RunProgram(data []int64, in <-chan int64) <-chan int64 {
+	return Run(data, in, false)
+}
+
+func Run(data []int64, in <-chan int64, dbg bool) <-chan int64 {
 	out := make(chan int64)
-	m := newMachine(data, in, out)
+	m := newMachine(data, in, out, dbg)
 	go m.run()
 	return out
 }

@@ -425,14 +425,7 @@ func main() {
 	after := dependents(p)
 	fmt.Println(after)
 
-	reqs := requirements(g)
-	fmt.Println(reqs)
-	fmt.Println(orders(keySet(g.keys()), reqs, nil))
-
-	//order := flatten(g, after)
-	//printPath(order)
-
-	//path, steps := shortestKeyPath(g, after)
-	//printPath(path)
-	//fmt.Println(steps)
+	path, steps := shortestKeyPath(g, after)
+	printPath(path)
+	fmt.Println(steps)
 }

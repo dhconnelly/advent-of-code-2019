@@ -1,0 +1,257 @@
+// set the stack pointer to after the program data
+[   0]   adjrel    imm(424)
+
+// call procedure C with ret=11 and arg0=X
+// halt if X < 0
+[   2]     read      rel(1)
+[   4]      mul     imm(11)   imm(1)   rel(0)
+[   8]   jmpnot      imm(0) imm(282)
+
+// call procedure B with ret=18 and arg0=X
+// 221 <- abs(X)
+[  11]      add     imm(18)   imm(0)   rel(0)
+[  15]   jmpnot      imm(0) imm(259)
+[  18]      add      imm(0)   rel(1) pos(221)
+
+// call procedure C with ret=31 and arg0=Y
+// halt if Y < 0
+[  22]     read      rel(1)
+[  24]      mul     imm(31)   imm(1)   rel(0)
+[  28]   jmpnot      imm(0) imm(282)
+
+// call procedure B with ret=38 and arg0=Y
+// Y = abs(Y)
+[  31]      mul      imm(1)  imm(38)   rel(0)
+[  35]    jmpif      imm(1) imm(259)
+
+// call procedure D with ret=57 and arg0=1, arg1=1, arg2=abs(Y)
+// because pos(23) = 1
+// = Y
+// 222 <- Y
+[  38]      mul      imm(1)  pos(23)   rel(2)
+[  42]      add      imm(0)   rel(1)   rel(3)
+[  46]      add      imm(0)   imm(1)   rel(1)
+[  50]      add      imm(0)  imm(57)   rel(0)
+[  54]   jmpnot      imm(0) imm(303)
+[  57]      mul      rel(1)   imm(1) pos(222)
+
+// call procedure A with ret=80 and arg0=259, arg1=X, arg2=X, arg3=X
+// = 259(X, X, X) = abs(X)
+[  61]      add    pos(221)   imm(0)   rel(3)
+[  65]      mul      imm(1) pos(221)   rel(2)
+[  69]      mul    imm(259)   imm(1)   rel(1)
+[  73]      add     imm(80)   imm(0)   rel(0)
+[  77]    jmpif      imm(1) imm(225)
+
+// call procedure D with ret=91 and arg0=X, arg1=149, arg2=X
+// = 149x^2
+// -> 223
+[  80]      mul      imm(1) imm(149)   rel(2)
+[  84]      add      imm(0)  imm(91)   rel(0)
+[  88]    jmpif      imm(1) imm(303)
+[  91]      mul      rel(1)   imm(1) pos(223)
+
+// call procedure A
+// with ret=118, arg0=225, arg1=225, arg2=259, arg3=^
+// call A(A, A, B, Y)
+// = A(A, B, Y)
+// = A(B, Y)
+// = B(Y)
+// = abs(Y)
+[  95]      mul    pos(222)   imm(1)   rel(4)
+[  99]      mul    imm(259)   imm(1)   rel(3)
+[ 103]      mul    imm(225)   imm(1)   rel(2)
+[ 107]      mul    imm(225)   imm(1)   rel(1)
+[ 111]      add    imm(118)   imm(0)   rel(0)
+[ 115]    jmpif      imm(1) imm(225)
+
+// call D with ret=133 and Y, 127, Y
+// = 127y^2
+[ 118]      mul      imm(1) pos(222)   rel(3)
+[ 122]      add      imm(0) imm(127)   rel(2)
+[ 126]      mul    imm(133)   imm(1)   rel(0)
+[ 130]    jmpif      imm(1) imm(303)
+
+// x0 = -above = -127y^2
+// += 149x^2
+// 223 <- 149x^2 - 127y^2
+[ 133]      mul      rel(1)  imm(-1)   rel(1)
+[ 137]      add    pos(223)   rel(1)   rel(1)
+[ 141]      mul      imm(1) imm(148)   rel(0)
+[ 145]   jmpnot      imm(0) imm(259)
+[ 148]      add      rel(1)   imm(0) pos(223)
+
+// call A with ret=195 and arg0=303, arg1=14, arg2=Y, arg3=X
+// = D(14, Y, X)
+// rel(4) = X
+// = 14yx
+[ 152]      add    pos(221)   imm(0)   rel(4)
+// rel(3) = Y
+[ 156]      mul    pos(222)   imm(1)   rel(3)
+// rel(2) = 14
+[ 160]      mul     imm(14)   imm(1)   rel(2)
+// *224 <- *303-2 = 301
+[ 164]      add    pos(132)  imm(-2) pos(224)
+// *224 <- *224 * 2 = 602
+[ 168]      mul    pos(224)   imm(2) pos(224)
+// *224 <- *224 + 3 = 605
+[ 172]      add    pos(224)   imm(3) pos(224)
+// *132 <- *132 * -1 = -303
+[ 176]      mul    pos(132)  imm(-1) pos(132)
+// *224 <- *224 + *132 = 605 - 303 = 302
+[ 180]      add    pos(224) pos(132) pos(224)
+// rel(1) = *224 + 1 = 303
+[ 184]      add    pos(224)   imm(1)   rel(1)
+// rel(0) = 195
+[ 188]      add    imm(195)   imm(0)   rel(0)
+[ 192]   jmpnot      imm(0) pos(108)
+
+// call D with ret=214 and arg0=1, arg1=(14yx < 149x^2-127y^2), arg2=-1
+[ 195]       lt      rel(1) pos(223)   rel(2)
+[ 199]      mul      imm(1)  pos(23)   rel(1)
+[ 203]      add      imm(0)  imm(-1)   rel(3)
+[ 207]      mul    imm(214)   imm(1)   rel(0)
+[ 211]   jmpnot      imm(0) imm(303)
+// maybe |149x^2-127y^2| < 14yx ?
+
+// print ret+1
+[ 214]      add      imm(1)   rel(1)   rel(1)
+[ 218]    print      rel(1)
+[ 220]     halt    
+
+// data section for the above
+[ 221] [0] // X
+[ 222] [0] // Y
+[ 223] [0] // 149x^2 if x < 149 then 149x^2 - 127y^2
+[ 224] [0] // 127y^2 if y < 127 then scratch
+
+// calling convention for procedure with N parameters:
+// push ret and arguments 1..N onto the stack, in that order.
+// retrieve return value from rel+1
+
+// procedure will move stack pointer forward by N+K, where
+// K is the number of locals to be used, then pop the stack
+// by moving it back by N+K and jump to rel(=ret). the return
+// value will be at rel+1.
+
+// ==========================================================
+// procedure A (4 params):
+// pos(249) <- arg0
+// push arg1
+// push arg2
+// push arg3
+// call procedure arg0 with ret=250, arg1, arg2, arg3
+// return the return value
+// =>
+// return arg0(arg1, arg2, arg3) 
+[ 225]   adjrel      imm(5)
+[ 227]      mul     rel(-4)   imm(1) pos(249)
+[ 231]      mul      imm(1)  rel(-3)   rel(1)
+[ 235]      add     rel(-2)   imm(0)   rel(2)
+[ 239]      add     rel(-1)   imm(0)   rel(3)
+[ 243]      mul      imm(1) imm(250)   rel(0)
+[ 247]    jmpif      imm(1) imm(225) // 225 -> arg0, see above
+[ 250]      mul      imm(1)   rel(1)  rel(-4)
+[ 254]   adjrel     imm(-5)
+[ 256]   jmpnot      imm(0)   rel(0)
+
+// ==========================================================
+// procedure B (1 params, 1 local):
+// x0 = 2 * (arg0 > 0 ? 1 : 0) - 1
+// return x0 * arg0
+// =>
+// return abs(arg0)
+[ 259]   adjrel      imm(3)
+[ 261]       lt      imm(0)  rel(-2)  rel(-1)
+[ 265]      mul     rel(-1)   imm(2)  rel(-1)
+[ 269]      add     rel(-1)  imm(-1)  rel(-1)
+[ 273]      mul     rel(-1)  rel(-2)  rel(-2)
+[ 277]   adjrel     imm(-3)
+[ 279]    jmpif      imm(1)   rel(0)
+
+// ==========================================================
+// procedure C:
+// x0 = arg0 < 0
+// if !x0: goto 294
+// print(0)
+// halt
+// 294: arg0 *= 1
+// return
+// =>
+// if x0 < 0:
+//   print(0)
+//   halt
+// return x0
+[ 282]   adjrel      imm(3)
+[ 284]       lt     rel(-2)   imm(0)  rel(-1)
+[ 288]   jmpnot     rel(-1) imm(294)
+[ 291]    print      imm(0)
+[ 293]     halt    
+[ 294]      mul     rel(-2)   imm(1)  rel(-2)
+[ 298]   adjrel     imm(-3)
+[ 300]   jmpnot      imm(0)   rel(0)
+
+// procedure D (3 params, 1 local):
+// arg0, arg1, arg2:
+// if 
+// if arg1 >= arg0:
+//   goto 346
+[ 303]   adjrel      imm(5)
+[ 305]       lt     rel(-3)  rel(-4)  rel(-1)
+[ 309]   jmpnot     rel(-1) imm(346)
+// if arg0 > arg1:
+[ 312]      add     rel(-4)  rel(-3)  rel(-4)
+[ 316]      mul     rel(-3)  imm(-1)  rel(-1)
+[ 320]      add     rel(-4)  rel(-1)   rel(2)
+[ 324]      mul      rel(2)  imm(-1)  rel(-1)
+[ 328]      add     rel(-4)  rel(-1)   rel(1)
+[ 332]      add      imm(0)  rel(-2)   rel(3)
+[ 336]      add    imm(343)   imm(0)   rel(0)
+[ 340]   jmpnot      imm(0) imm(303)
+[ 343]   jmpnot      imm(0) imm(415)
+
+// if arg0 <= arg1
+
+// x0 = arg2 < arg1
+// if !x0: goto 387
+// => if arg1 <= arg2: goto 387
+[ 346]       lt     rel(-2)  rel(-3)  rel(-1)
+[ 350]   jmpnot     rel(-1) imm(387)
+// if arg2 < arg1:
+// arg1 += arg2 (from 88: 199)
+[ 353]      add     rel(-3)  rel(-2)  rel(-3)
+// local0 = -arg2
+[ 357]      mul     rel(-2)  imm(-1)  rel(-1)
+// call proc D with arg0, arg2, arg1
+// third arg: arg1 + local0 = arg1+arg2-arg2 = arg1
+[ 361]      add     rel(-3)  rel(-1)   rel(3)
+// local0 = third arg * -1 = -arg1
+[ 365]      mul      rel(3)  imm(-1)  rel(-1)
+// second arg: arg1 + local0 = arg1+arg2 - arg1 = arg2
+[ 369]      add     rel(-3)  rel(-1)   rel(2)
+// first arg: arg0
+[ 373]      add      imm(0)  rel(-4)   rel(1)
+// set ret=384
+[ 377]      mul      imm(1) imm(384)   rel(0)
+[ 381]   jmpnot      imm(0) imm(303)
+// jump to 415 (return)
+[ 384]    jmpif      imm(1) imm(415)
+// if arg1 <= arg2:
+// arg0 *= -1 (from 27: -1) (from 88: -50)
+[ 387]      mul     rel(-4)  imm(-1)  rel(-4)
+// arg0 += arg1 (from 27: 0) (from 88: 0)
+[ 391]      add     rel(-4)  rel(-3)  rel(-4)
+// arg2 *= arg1 (from 27: Y) (from 88: x * 149 = 7450)
+[ 395]      mul     rel(-3)  rel(-2)  rel(-2)
+// arg0 *= arg2 (from 27: 0) (from 88: 0)
+[ 399]      mul     rel(-2)  rel(-4)  rel(-4)
+// arg1 *= arg2 (from 27: Y) (from 88: x * x * 149 = 149x^2)
+[ 403]      mul     rel(-3)  rel(-2)  rel(-3)
+// arg2 = -arg0 (from 27: 0) (from 88: 0)
+[ 407]      mul     rel(-4)  imm(-1)  rel(-2)
+// x0 = arg1 + arg2 (from 27: Y) (from 88: 149x^2)
+[ 411]      add     rel(-3)  rel(-2)   rel(1)
+// return x0 = arg1 + arg2 (from 27: Y) (from 88: 149x^2)
+[ 415]      mul      imm(1)   rel(1)  rel(-4)
+[ 419]   adjrel     imm(-5)
+[ 421]   jmpnot      imm(0)   rel(0)

@@ -43,16 +43,21 @@ func newMachine(data []int64, in <-chan int64, out chan<- int64, dbg bool) *mach
 //
 func (m *machine) get(addr int64, md Mode) int64 {
 	v := m.data[addr]
+	var val int64
 	switch md {
 	case pos:
-		return m.data[v]
+		val = m.data[v]
 	case imm:
-		return v
+		val = v
 	case rel:
-		return m.data[v+m.relbase]
+		val = m.data[v+m.relbase]
+	default:
+		log.Fatalf("unknown mode: %d", md)
 	}
-	log.Fatalf("unknown mode: %d", md)
-	return 0
+	if m.dbg {
+		log.Println("read value:", val)
+	}
+	return val
 }
 
 // Sets a value according to the specified mode.
@@ -73,6 +78,9 @@ func (m *machine) set(addr, val int64, md Mode) {
 		m.data[v+m.relbase] = val
 	default:
 		log.Fatalf("bad mode for write: %d", md)
+	}
+	if m.dbg {
+		log.Println("wrote value:", val)
 	}
 }
 

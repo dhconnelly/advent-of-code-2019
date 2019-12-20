@@ -36,24 +36,24 @@ func (d *drone) test(x, y int, debug bool) state {
 }
 
 type beamReadings struct {
-	width, height int
-	m             map[geom.Pt2]state
+	x, y, width, height int
+	m                   map[geom.Pt2]state
 }
 
-func mapBeamReadings(prog []int64, width, height int) beamReadings {
+func mapBeamReadings(prog []int64, x, y, width, height int) beamReadings {
 	d := newDrone(prog)
-	m := beamReadings{width, height, make(map[geom.Pt2]state)}
-	for x := 0; x < width; x++ {
-		for y := 0; y < height; y++ {
-			m.m[geom.Pt2{x, y}] = d.test(x, y, false)
+	m := beamReadings{x, y, width, height, make(map[geom.Pt2]state)}
+	for j := x; j < x+width; j++ {
+		for i := y; i < y+height; i++ {
+			m.m[geom.Pt2{j, i}] = d.test(j, i, false)
 		}
 	}
 	return m
 }
 
 func printBeamReadings(m beamReadings) {
-	for x := 0; x < m.width; x++ {
-		for y := 0; y < m.height; y++ {
+	for x := m.x; x < m.x+m.width; x++ {
+		for y := m.y; y < m.y+m.height; y++ {
 			switch m.m[geom.Pt2{x, y}] {
 			case pulled:
 				fmt.Print("#")
@@ -75,12 +75,39 @@ func countBeamReadings(m beamReadings) int {
 	return affected
 }
 
+func fastTest(x, y int) bool {
+	// see asm.txt for how this was determined
+	return 14*x*y >= ints.Abs(149*x*x-127*y*y)
+}
+
+func testRange(x, y, width, height int) bool {
+	return (fastTest(x, y) &&
+		fastTest(x+width-1, y) &&
+		fastTest(x, y+height-1) &&
+		fastTest(x+width-1, y+height-1))
+}
+
+func findRange(fromX, fromY, toX, toY, width, height int) (int, int) {
+	for x := fromX; x <= toX; x++ {
+		for y := fromY; y <= toY; y++ {
+			if testRange(x, y, width, height) {
+				return x, y
+			}
+		}
+	}
+	return 0, 0
+}
+
 func main() {
 	data, err := intcode.ReadProgram(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
-	m := mapBeamReadings(data, 50, 50)
-	printBeamReadings(m)
+	m := mapBeamReadings(data, 0, 0, 50, 50)
 	fmt.Println(countBeamReadings(m))
+
+	// range chosen by dumping the formula in fastTest
+	// into desmos.com/calculator
+	x, y := findRange(1500, 1600, 2000, 2200, 100, 100)
+	fmt.Println(x*10000 + y)
 }

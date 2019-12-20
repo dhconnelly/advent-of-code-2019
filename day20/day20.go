@@ -174,6 +174,11 @@ func findLabels(
 	return adjs, lbls
 }
 
+type point struct {
+	p     geom.Pt2
+	depth int
+}
+
 type maze struct {
 	g     grid
 	outer geom.Rect
@@ -188,12 +193,12 @@ func readMaze(g grid) maze {
 	return maze{g, inner, outer, adjs, lbls}
 }
 
-func (m maze) adjacent(from geom.Pt2) []geom.Pt2 {
-	if m.g.g[from] == wall {
+func (m maze) adjacent(from point) []point {
+	if m.g.g[from.p] == wall {
 		return nil
 	}
-	var nbrs []geom.Pt2
-	for _, nbr := range from.ManhattanNeighbors() {
+	var nbrs []point
+	for _, nbr := range from.p.ManhattanNeighbors() {
 		c := m.g.g[nbr]
 		// don't go through walls
 		if c == wall {
@@ -201,13 +206,29 @@ func (m maze) adjacent(from geom.Pt2) []geom.Pt2 {
 		}
 		// go into passages
 		if c == passage {
-			nbrs = append(nbrs, nbr)
+			nbrs = append(nbrs, point{nbr, from.depth})
 			continue
 		}
 		// go through portals
-		for _, adj := range m.adjs[m.lbls[nbr]] {
-			if from != adj {
-				nbrs = append(nbrs, adj)
+		lbl, ok := m.lbls[nbr]
+		if !ok {
+			continue
+		}
+		depth := from.depth
+		// inner portal increases depth, outer decreases
+		if m.outer.Contains(nbr) {
+			depth++
+		} else {
+			// but don't go out at top level
+			if from.depth == 0 {
+				continue
+			}
+			depth--
+		}
+		// go through portals and update depth
+		for _, adj := range m.adjs[lbl] {
+			if from.p != adj {
+				nbrs = append(nbrs, point{adj, depth})
 			}
 		}
 	}
@@ -215,18 +236,23 @@ func (m maze) adjacent(from geom.Pt2) []geom.Pt2 {
 }
 
 type bfsNode struct {
-	p geom.Pt2
+	p point
 	d int
 }
 
-func shortestPath(m maze, from, to label) int {
-	src, dst := m.adjs[from][0], m.adjs[to][0]
+func shortestPath(
+	m maze,
+	from, to label,
+	eq func(p1, p2 point) bool,
+) int {
+	src := point{m.adjs[from][0], 0}
+	dst := point{m.adjs[to][0], 0}
 	q := []bfsNode{{src, 0}}
-	v := make(map[geom.Pt2]bool)
+	v := make(map[point]bool)
 	var first bfsNode
 	for len(q) > 0 {
 		first, q = q[0], q[1:]
-		if first.p == dst {
+		if eq(first.p, dst) {
 			return first.d
 		}
 		v[first.p] = true
@@ -242,6 +268,14 @@ func shortestPath(m maze, from, to label) int {
 	return -1
 }
 
+func eq(p1, p2 point) bool {
+	return p1.p == p2.p
+}
+
+func depthEq(p1, p2 point) bool {
+	return p1.p == p2.p && p1.depth == p2.depth
+}
+
 func main() {
 	f, err := os.Open(os.Args[1])
 	if err != nil {
@@ -249,5 +283,6 @@ func main() {
 	}
 	g := readGrid(f)
 	m := readMaze(g)
-	fmt.Println(shortestPath(m, lbl("AA"), lbl("ZZ")))
+	fmt.Println(shortestPath(m, lbl("AA"), lbl("ZZ"), eq))
+	fmt.Println(shortestPath(m, lbl("AA"), lbl("ZZ"), depthEq))
 }

@@ -184,9 +184,38 @@ type maze struct {
 func readMaze(g grid) maze {
 	outer, inner := mazeBounds(g)
 	adjs, lbls := findLabels(g, outer, inner)
-	fmt.Println("adjs:", adjs)
-	fmt.Println("lbls:", lbls)
 	return maze{g, inner, outer, adjs, lbls}
+}
+
+func (m maze) adjacent(from geom.Pt2) []geom.Pt2 {
+	if m.g.g[from] == wall {
+		return nil
+	}
+	var nbrs []geom.Pt2
+	for _, nbr := range from.ManhattanNeighbors() {
+		c := m.g.g[nbr]
+		// don't go through walls
+		if c == wall {
+			continue
+		}
+		// go into passages
+		if c == passage {
+			nbrs = append(nbrs, nbr)
+			continue
+		}
+		// go through portals
+		for _, adj := range m.adjs[m.lbls[nbr]] {
+			if from != adj {
+				nbrs = append(nbrs, adj)
+			}
+		}
+	}
+	return nbrs
+}
+
+func printAdjacent(m maze, x, y int) {
+	p := geom.Pt2{x, y}
+	fmt.Println(p, m.adjacent(p))
 }
 
 func main() {
@@ -195,5 +224,5 @@ func main() {
 		log.Fatal(err)
 	}
 	g := readGrid(f)
-	readMaze(g)
+	m := readMaze(g)
 }

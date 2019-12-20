@@ -200,22 +200,26 @@ func (m maze) adjacent(from point) []point {
 	var nbrs []point
 	for _, nbr := range from.p.ManhattanNeighbors() {
 		c := m.g.g[nbr]
+
 		// don't go through walls
 		if c == wall {
 			continue
 		}
+
 		// go into passages
 		if c == passage {
 			nbrs = append(nbrs, point{nbr, from.depth})
 			continue
 		}
+
 		// go through portals
 		lbl, ok := m.lbls[nbr]
 		if !ok {
 			continue
 		}
-		depth := from.depth
+
 		// inner portal increases depth, outer decreases
+		depth := from.depth
 		if m.outer.Contains(nbr) {
 			depth++
 		} else {
@@ -225,6 +229,7 @@ func (m maze) adjacent(from point) []point {
 			}
 			depth--
 		}
+
 		// go through portals and update depth
 		for _, adj := range m.adjs[lbl] {
 			if from.p != adj {

@@ -21,11 +21,7 @@ type drone struct {
 	prog []int64
 }
 
-func newDrone(prog []int64) *drone {
-	return &drone{ints.Copied64(prog)}
-}
-
-func (d *drone) test(x, y int, debug bool) state {
+func (d drone) test(x, y int, debug bool) state {
 	prog := ints.Copied64(d.prog)
 	in := make(chan int64)
 	defer close(in)
@@ -41,7 +37,7 @@ type beamReadings struct {
 }
 
 func mapBeamReadings(prog []int64, x, y, width, height int) beamReadings {
-	d := newDrone(prog)
+	d := drone{prog}
 	m := beamReadings{x, y, width, height, make(map[geom.Pt2]state)}
 	for j := x; j < x+width; j++ {
 		for i := y; i < y+height; i++ {

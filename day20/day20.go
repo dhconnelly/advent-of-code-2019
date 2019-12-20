@@ -86,6 +86,10 @@ innerHi:
 
 type label [2]rune
 
+func lbl(s string) label {
+	return label([2]rune{rune(s[0]), rune(s[1])})
+}
+
 func (lbl label) String() string {
 	return string(lbl[:])
 }
@@ -113,9 +117,6 @@ func addLabel(
 	}
 	a, b := g.g[p], g.g[p.Go(dir)]
 	lbl := label([2]rune{a, b})
-	if dir == geom.Up || dir == geom.Left {
-		lbl = flip(lbl)
-	}
 	if reversed {
 		lbl = flip(lbl)
 	}
@@ -130,13 +131,13 @@ func findOuterLabels(
 	lbls map[geom.Pt2]label,
 ) {
 	for x := r.Lo.X; x <= r.Hi.X; x++ {
-		addLabel(g, geom.Pt2{x, r.Lo.Y}, geom.Up, false, adjs, lbls)
+		addLabel(g, geom.Pt2{x, r.Lo.Y}, geom.Down, true, adjs, lbls)
 	}
 	for x := r.Lo.X; x <= r.Hi.X; x++ {
-		addLabel(g, geom.Pt2{x, r.Hi.Y}, geom.Down, false, adjs, lbls)
+		addLabel(g, geom.Pt2{x, r.Hi.Y}, geom.Up, false, adjs, lbls)
 	}
 	for y := r.Lo.Y; y <= r.Hi.Y; y++ {
-		addLabel(g, geom.Pt2{r.Lo.X, y}, geom.Left, false, adjs, lbls)
+		addLabel(g, geom.Pt2{r.Lo.X, y}, geom.Left, true, adjs, lbls)
 	}
 	for y := r.Lo.Y; y <= r.Hi.Y; y++ {
 		addLabel(g, geom.Pt2{r.Hi.X, y}, geom.Right, false, adjs, lbls)
@@ -150,16 +151,16 @@ func findInnerLabels(
 	lbls map[geom.Pt2]label,
 ) {
 	for x := r.Lo.X; x <= r.Hi.X; x++ {
-		addLabel(g, geom.Pt2{x, r.Lo.Y - 1}, geom.Up, true, adjs, lbls)
+		addLabel(g, geom.Pt2{x, r.Lo.Y - 1}, geom.Up, false, adjs, lbls)
 	}
 	for x := r.Lo.X; x <= r.Hi.X; x++ {
 		addLabel(g, geom.Pt2{x, r.Hi.Y + 1}, geom.Down, true, adjs, lbls)
 	}
 	for y := r.Lo.Y; y <= r.Hi.Y; y++ {
-		addLabel(g, geom.Pt2{r.Lo.X - 1, y}, geom.Left, true, adjs, lbls)
+		addLabel(g, geom.Pt2{r.Lo.X - 1, y}, geom.Right, false, adjs, lbls)
 	}
 	for y := r.Lo.Y; y <= r.Hi.Y; y++ {
-		addLabel(g, geom.Pt2{r.Hi.X + 1, y}, geom.Right, true, adjs, lbls)
+		addLabel(g, geom.Pt2{r.Hi.X + 1, y}, geom.Left, true, adjs, lbls)
 	}
 }
 
@@ -213,9 +214,32 @@ func (m maze) adjacent(from geom.Pt2) []geom.Pt2 {
 	return nbrs
 }
 
-func printAdjacent(m maze, x, y int) {
-	p := geom.Pt2{x, y}
-	fmt.Println(p, m.adjacent(p))
+type bfsNode struct {
+	p geom.Pt2
+	d int
+}
+
+func shortestPath(m maze, from, to label) int {
+	src, dst := m.adjs[from][0], m.adjs[to][0]
+	q := []bfsNode{{src, 0}}
+	v := make(map[geom.Pt2]bool)
+	var first bfsNode
+	for len(q) > 0 {
+		first, q = q[0], q[1:]
+		if first.p == dst {
+			return first.d
+		}
+		v[first.p] = true
+		nbrs := m.adjacent(first.p)
+		for _, nbr := range nbrs {
+			if v[nbr] {
+				continue
+			}
+			q = append(q, bfsNode{nbr, first.d + 1})
+		}
+	}
+	log.Fatalf("path not found: %s -> %s", from, to)
+	return -1
 }
 
 func main() {
@@ -225,4 +249,5 @@ func main() {
 	}
 	g := readGrid(f)
 	m := readMaze(g)
+	fmt.Println(shortestPath(m, lbl("AA"), lbl("ZZ")))
 }

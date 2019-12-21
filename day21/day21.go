@@ -8,7 +8,6 @@ import (
 	"math"
 	"os"
 
-	//"github.com/dhconnelly/advent-of-code-2019/geom"
 	"github.com/dhconnelly/advent-of-code-2019/intcode"
 )
 
@@ -34,7 +33,6 @@ type springdroid struct {
 func (d springdroid) execute(r io.Reader) error {
 	in := make(chan int64)
 	out := intcode.RunProgram(d.prog, in)
-
 	fmt.Println(readLine(out))
 	scan := bufio.NewScanner(r)
 	for scan.Scan() {

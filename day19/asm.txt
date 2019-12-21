@@ -1,3 +1,6 @@
+// for more details see
+// https://dhconnelly.com/advent-of-code-2019-commentary.html#intcode-reverse-engineering
+
 // set the stack pointer to after the program data
 [   0]   adjrel    imm(424)
 

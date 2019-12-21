@@ -1,14 +1,14 @@
 diff --git a/intcode/machine.go b/intcode/machine.go
-index 9b2cc59..a40c516 100644
+index 2292ac9..693b1c6 100644
 --- a/intcode/machine.go
 +++ b/intcode/machine.go
-@@ -40,6 +40,9 @@ func (m *machine) get(addr int64, md mode) int64 {
- 	v := m.data[addr]
+@@ -46,6 +46,9 @@ func (m *machine) get(addr int64, md Mode) int64 {
+ 	var val int64
  	switch md {
  	case pos:
 +		if v == 392 {
 +			v = 388
 +		}
- 		return m.data[v]
+ 		val = m.data[v]
  	case imm:
- 		return v
+ 		val = v

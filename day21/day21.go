@@ -30,23 +30,26 @@ type springdroid struct {
 	prog []int64
 }
 
-func (d springdroid) execute(r io.Reader) error {
+func (d springdroid) execute(r io.Reader, prompt bool) error {
 	in := make(chan int64)
 	out := intcode.RunProgram(d.prog, in)
-	fmt.Println(readLine(out))
+	line := readLine(out)
+	if prompt {
+		fmt.Println(line)
+	}
 	scan := bufio.NewScanner(r)
 	for scan.Scan() {
 		line := scan.Text()
 		writeLine(in, line)
-		if line == "WALK" {
+		if line == "WALK" || line == "RUN" {
 			break
 		}
 	}
 	for c, ok := <-out; ok; c, ok = <-out {
-		if c <= math.MaxInt8 {
-			fmt.Printf("%c", c)
-		} else {
+		if c > math.MaxInt8 {
 			fmt.Printf("%d\n", c)
+		} else if prompt {
+			fmt.Printf("%c", c)
 		}
 	}
 	return scan.Err()
@@ -71,9 +74,9 @@ func main() {
 		for _, path := range os.Args[2:] {
 			f := openOrDie(path)
 			defer f.Close()
-			d.execute(f)
+			d.execute(f, false)
 		}
 	} else {
-		d.execute(os.Stdin)
+		d.execute(os.Stdin, true)
 	}
 }

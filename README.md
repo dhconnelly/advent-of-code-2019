@@ -6,7 +6,8 @@ Go solutions to [Advent of Code](https://adventofcode.com) problems for
 corresponding
 [blog post](https://dhconnelly.com/advent-of-code-2019-commentary.html).
 
-To run a given day's solution on the input file:
+Unless specified otherwise in a per-day README, the solutions for a given
+day can be run by doing:
 
     cd dayN
     go run dayN.go input.txt

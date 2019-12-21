@@ -42,14 +42,22 @@ func (m maze) clone() maze {
 	return n
 }
 
-func (m maze) find(c rune) geom.Pt2 {
+func (m maze) maybeFind(c rune) (geom.Pt2, bool) {
 	for k, v := range m {
 		if c == v {
-			return k
+			return k, true
 		}
 	}
-	log.Fatal("not found:", c)
-	return geom.Zero2
+	return geom.Zero2, false
+}
+
+func (m maze) find(c rune) geom.Pt2 {
+	p, ok := m.maybeFind(c)
+	if !ok {
+		log.Fatalf("not found: %c", c)
+		return geom.Zero2
+	}
+	return p
 }
 
 func (m maze) keys() []rune {
@@ -72,19 +80,14 @@ func (m maze) adjacent(p geom.Pt2) []geom.Pt2 {
 	return adj
 }
 
-type edge struct {
-	c rune
-	d int
-}
-
 type bfsNode struct {
 	p geom.Pt2
 	c rune
 	d int
 }
 
-func neighbors(m maze, p geom.Pt2) []edge {
-	var nbrs []edge
+func neighbors(m maze, p geom.Pt2) map[rune]bfsNode {
+	nbrs := make(map[rune]bfsNode)
 	var first bfsNode
 	q := []bfsNode{{p, m[p], 0}}
 	v := map[geom.Pt2]bool{p: true}
@@ -95,96 +98,16 @@ func neighbors(m maze, p geom.Pt2) []edge {
 				continue
 			}
 			v[adj] = true
-			if c := m[adj]; c == entr || isDoor(c) || isKey(c) {
-				nbrs = append(nbrs, edge{c, first.d + 1})
+			c := m[adj]
+			nd := bfsNode{adj, c, first.d + 1}
+			if isDoor(c) || isKey(c) {
+				nbrs[c] = nd
 			} else {
-				q = append(q, bfsNode{adj, c, first.d + 1})
+				q = append(q, nd)
 			}
 		}
 	}
 	return nbrs
-}
-
-type graph map[rune]map[rune]int
-
-func (g graph) clone() graph {
-	g2 := graph(make(map[rune]map[rune]int))
-	for k, v := range g {
-		g2[k] = make(map[rune]int)
-		for k2, v2 := range v {
-			g2[k][k2] = v2
-		}
-	}
-	return g2
-}
-
-func (g graph) keys() []rune {
-	var keys []rune
-	for nbr := range g {
-		if isKey(nbr) {
-			keys = append(keys, nbr)
-		}
-	}
-	return keys
-}
-
-func (g graph) connected(c1, c2 rune) bool {
-	_, ok := g[c1][c2]
-	return ok
-}
-
-func (g graph) takeKey(c rune) map[rune]int {
-	g.remove(doorFor(c))
-	return g.remove(c)
-}
-
-func (g graph) remove(c rune) map[rune]int {
-	nbrs := g[c]
-	// connect neighbors
-	for nbr1, d1 := range nbrs {
-		for nbr2, d2 := range nbrs {
-			// all distinct neighbor pairs
-			if nbr1 == nbr2 {
-				continue
-			}
-			// that are unconnected or are now closer with c removed
-			d := d1 + d2
-			if g.connected(nbr1, nbr2) && d > g[nbr1][nbr2] {
-				continue
-			}
-			g[nbr1][nbr2] = d
-			g[nbr2][nbr1] = d
-		}
-	}
-	// remove c from the graph
-	for nbr := range nbrs {
-		delete(g[nbr], c)
-	}
-	delete(g, c)
-	return nbrs
-}
-
-func printGraph(g graph) {
-	for c, nbrs := range g {
-		fmt.Printf("%c: ", c)
-		for nbr, d := range nbrs {
-			fmt.Printf("[%c, dist=%d] ", nbr, d)
-		}
-		fmt.Println()
-	}
-}
-
-func reachableGraph(m maze) graph {
-	g := graph(make(map[rune]map[rune]int))
-	for p, c := range m {
-		if c == entr || isDoor(c) || isKey(c) {
-			g[c] = make(map[rune]int)
-			for _, e := range neighbors(m, p) {
-				g[c][e.c] = e.d
-			}
-		}
-	}
-	return g
 }
 
 func readMaze(r io.Reader) maze {
@@ -213,55 +136,77 @@ func copied(x []rune) []rune {
 	return y
 }
 
+func copiedPts(ps []geom.Pt2) []geom.Pt2 {
+	qs := make([]geom.Pt2, len(ps))
+	copy(qs, ps)
+	return qs
+}
+
 func remove(rs []rune, i int) []rune {
 	return append(copied(rs[:i]), rs[i+1:]...)
 }
 
-type memoKey struct {
-	c rune
-	s string
+func replace(ps []geom.Pt2, i int, p geom.Pt2) []geom.Pt2 {
+	ps = copiedPts(ps)
+	ps[i] = p
+	return ps
 }
 
-var memo = make(map[memoKey]int)
+var memo = make(map[string]int)
 
-func shortestPathTaking(c rune, g graph, need []rune) int {
-	if d, ok := memo[memoKey{c, string(need)}]; ok {
+func key(pos []geom.Pt2, need []rune) string {
+	return fmt.Sprintf("%v-%s", pos, string(need))
+}
+
+func multiShortestPath(pos []geom.Pt2, m maze, need []rune) int {
+	mk := key(pos, need)
+	if d, ok := memo[mk]; ok {
 		return d
 	}
 	if len(need) == 0 {
 		return 0
 	}
-
-	nbrs := g.takeKey(c)
 	shortest := 0
-	for i, next := range need {
-		d, ok := nbrs[next]
-		if !ok {
-			continue
-		}
-		subSteps := shortestPathTaking(next, g.clone(), remove(need, i)) + d
-		if shortest == 0 || subSteps < shortest {
-			shortest = subSteps
+	for j, from := range pos {
+		nbrs := neighbors(m, from)
+		for i, key := range need {
+			nd, ok := nbrs[key]
+			if !ok {
+				continue
+			}
+			m2 := m.clone()
+			m2[nd.p] = open
+			if door, ok := m.maybeFind(doorFor(nd.c)); ok {
+				m2[door] = open
+			}
+			subSteps := multiShortestPath(replace(pos, j, nd.p), m2, remove(need, i)) + nd.d
+			if subSteps >= 0 && (shortest == 0 || subSteps < shortest) {
+				shortest = subSteps
+			}
 		}
 	}
-	memo[memoKey{c, string(need)}] = shortest
-	return shortest
+	if shortest > 0 {
+		memo[mk] = shortest
+		return shortest
+	}
+	return -1
 }
 
-func shortestKeyPath(g graph) int {
-	return shortestPathTaking(entr, g, g.keys())
-}
-
-func splitMaze(m maze, atPoint geom.Pt2) {
+func splitMaze(m maze, atPoint geom.Pt2) []geom.Pt2 {
 	m[atPoint] = wall
 	m[atPoint.Go(geom.Left)] = wall
 	m[atPoint.Go(geom.Right)] = wall
 	m[atPoint.Go(geom.Up)] = wall
 	m[atPoint.Go(geom.Down)] = wall
-	m[atPoint.Go(geom.Up).Go(geom.Left)] = entr
-	m[atPoint.Go(geom.Up).Go(geom.Right)] = entr
-	m[atPoint.Go(geom.Down).Go(geom.Left)] = entr
-	m[atPoint.Go(geom.Down).Go(geom.Right)] = entr
+	p1 := atPoint.Go(geom.Up).Go(geom.Left)
+	p2 := atPoint.Go(geom.Up).Go(geom.Right)
+	p3 := atPoint.Go(geom.Down).Go(geom.Left)
+	p4 := atPoint.Go(geom.Down).Go(geom.Right)
+	m[p1] = '1'
+	m[p2] = '2'
+	m[p3] = '3'
+	m[p4] = '4'
+	return []geom.Pt2{p1, p2, p3, p4}
 }
 
 func main() {
@@ -270,13 +215,12 @@ func main() {
 		log.Fatal(err)
 	}
 	defer f.Close()
-
 	m := readMaze(f)
-	g := reachableGraph(m)
-	steps := shortestKeyPath(g)
-	fmt.Println(steps)
 
-	splitMaze(m, m.find(entr))
-	g = reachableGraph(m)
-	printGraph(g)
+	steps1 := multiShortestPath([]geom.Pt2{m.find(entr)}, m, m.keys())
+	fmt.Println(steps1)
+
+	pos := splitMaze(m, m.find(entr))
+	steps2 := multiShortestPath(pos, m, m.keys())
+	fmt.Println(steps2)
 }

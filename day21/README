@@ -1,0 +1,7 @@
+To run today's solutions:
+
+    go run day21.go input.txt SCRIPT_FILE
+
+For example:
+
+    go run day21.go input.txt part1.txt

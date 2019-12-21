@@ -42,6 +42,16 @@ func (m maze) clone() maze {
 	return n
 }
 
+func (m maze) find(c rune) geom.Pt2 {
+	for k, v := range m {
+		if c == v {
+			return k
+		}
+	}
+	log.Fatal("not found:", c)
+	return geom.Zero2
+}
+
 func (m maze) keys() []rune {
 	var keys []rune
 	for _, v := range m {
@@ -242,6 +252,18 @@ func shortestKeyPath(g graph) int {
 	return shortestPathTaking(entr, g, g.keys())
 }
 
+func splitMaze(m maze, atPoint geom.Pt2) {
+	m[atPoint] = wall
+	m[atPoint.Go(geom.Left)] = wall
+	m[atPoint.Go(geom.Right)] = wall
+	m[atPoint.Go(geom.Up)] = wall
+	m[atPoint.Go(geom.Down)] = wall
+	m[atPoint.Go(geom.Up).Go(geom.Left)] = entr
+	m[atPoint.Go(geom.Up).Go(geom.Right)] = entr
+	m[atPoint.Go(geom.Down).Go(geom.Left)] = entr
+	m[atPoint.Go(geom.Down).Go(geom.Right)] = entr
+}
+
 func main() {
 	f, err := os.Open(os.Args[1])
 	if err != nil {
@@ -253,4 +275,8 @@ func main() {
 	g := reachableGraph(m)
 	steps := shortestKeyPath(g)
 	fmt.Println(steps)
+
+	splitMaze(m, m.find(entr))
+	g = reachableGraph(m)
+	printGraph(g)
 }

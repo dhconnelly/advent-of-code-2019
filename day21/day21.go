@@ -48,10 +48,18 @@ func (d springdroid) execute(r io.Reader) error {
 		if c <= math.MaxInt8 {
 			fmt.Printf("%c", c)
 		} else {
-			fmt.Printf("%d", c)
+			fmt.Printf("%d\n", c)
 		}
 	}
 	return scan.Err()
+}
+
+func openOrDie(path string) *os.File {
+	f, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return f
 }
 
 func main() {
@@ -59,17 +67,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var r io.Reader
-	if len(os.Args) > 2 {
-		f, err := os.Open(os.Args[2])
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer f.Close()
-		r = f
-	} else {
-		r = os.Stdin
-	}
 	d := springdroid{data}
-	d.execute(r)
+
+	if len(os.Args) > 2 {
+		for _, path := range os.Args[2:] {
+			f := openOrDie(path)
+			defer f.Close()
+			d.execute(f)
+		}
+	} else {
+		d.execute(os.Stdin)
+	}
 }

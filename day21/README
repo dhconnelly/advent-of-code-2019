@@ -1,7 +1,11 @@
+To run in interactive mode:
+
+    go run day21.go input.txt
+
+To run a script:
+
+    go run day21.go input.txt SCRIPT_FILE+
+
 To run today's solutions:
 
-    go run day21.go input.txt SCRIPT_FILE
-
-For example:
-
-    go run day21.go input.txt part1.txt
+    go run day21.go input.txt part1.txt part2.txt

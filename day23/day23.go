@@ -20,37 +20,40 @@ type machine struct {
 	out  <-chan packet
 }
 
+func head(q []packet) int64 {
+	if len(q) == 0 {
+		return -1
+	}
+	return q[0].x
+}
+
 func NewMachine(prog []int64, addr int64) machine {
 	out, in := make(chan packet), make(chan packet)
 	min := make(chan int64)
 	mout := intcode.RunProgram(prog, min)
 	min <- int64(addr)
 	var q []packet
-	var head int64 = -1
 	go func() {
 		for {
 			select {
 			case to, ok := <-mout:
-				log.Printf("machine %d sending to %d", addr, to)
 				if !ok {
 					close(in)
 					close(out)
 					close(min)
 					return
 				}
-				x, y := <-mout, <-mout
-				out <- packet{addr, to, x, y}
+				x := <-mout
+				y := <-mout
+				p := packet{addr, to, x, y}
+				out <- p
 			case p := <-in:
-				log.Printf("queuing %v for machine %d", p, addr)
 				q = append(q, p)
-				head = p.x
-			case min <- head:
-				log.Printf("machine %d receiving %d", addr, head)
-				if head != -1 {
+			case min <- head(q):
+				if head(q) != -1 {
 					p := q[0]
 					q = q[1:]
 					min <- p.y
-					head = -1
 				}
 			}
 		}
@@ -64,17 +67,13 @@ func listen(
 	out chan<- packet,
 	closed chan<- int64,
 ) {
-	for {
-		p, ok := <-m.out
-		if !ok {
-			closed <- addr
-			return
-		}
+	for p := range m.out {
 		out <- p
 	}
+	closed <- addr
 }
 
-func networkSwitch(ms map[int64]machine) packet {
+func networkSwitch(ms map[int64]machine, nat bool) packet {
 	out := make(chan packet)
 	closed := make(chan int64)
 	closedCount := 0
@@ -84,22 +83,21 @@ func networkSwitch(ms map[int64]machine) packet {
 loop:
 	for {
 		select {
-		case addr := <-closed:
-			log.Println("machine halted:", addr)
+		case p, ok := <-out:
+			if !ok {
+				break loop
+			}
+			if !nat && p.to == 255 {
+				return p
+			}
+			ms[p.to].in <- p
+		case <-closed:
 			closedCount++
 			if closedCount == len(ms) {
 				close(out)
 				close(closed)
-			}
-		case p, ok := <-out:
-			log.Println("packet:", p)
-			if !ok {
 				break loop
 			}
-			if p.to == 255 {
-				return p
-			}
-			ms[p.to].in <- p
 		}
 	}
 	log.Fatal("stopped without return value")
@@ -115,5 +113,5 @@ func main() {
 	for addr := int64(0); addr < 50; addr++ {
 		ms[addr] = NewMachine(data, addr)
 	}
-	fmt.Println(networkSwitch(ms))
+	fmt.Println(networkSwitch(ms, false).y)
 }

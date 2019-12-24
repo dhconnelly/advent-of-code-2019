@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/dhconnelly/advent-of-code-2019/intcode"
 )
@@ -136,13 +137,14 @@ func NewNat(addr int64, idles *idleMap) nat {
 	in := make(chan packet)
 	out := make(chan packet)
 	n := nat{m: machine{addr: addr, in: in, out: out}}
+	tick := time.Tick(10 * time.Millisecond)
 	go func() {
 		for {
 			select {
 			case p := <-in:
 				fmt.Println(p)
 				n.last = p
-			default:
+			case <-tick:
 				if idles.allIdle() {
 					fmt.Println("all idle, sending", n.last)
 					idles.reset(0)

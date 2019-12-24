@@ -137,16 +137,14 @@ func NewNat(addr int64, idles *idleMap) nat {
 	in := make(chan packet)
 	out := make(chan packet)
 	n := nat{m: machine{addr: addr, in: in, out: out}}
-	tick := time.Tick(10 * time.Millisecond)
+	tick := time.Tick(1 * time.Second)
 	go func() {
 		for {
 			select {
 			case p := <-in:
-				fmt.Println(p)
 				n.last = p
 			case <-tick:
 				if idles.allIdle() {
-					fmt.Println("all idle, sending", n.last)
 					idles.reset(0)
 					out <- packet{from: addr, to: 0, x: n.last.x, y: n.last.y}
 				}

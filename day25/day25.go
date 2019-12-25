@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/dhconnelly/advent-of-code-2019/geom"
 	"github.com/dhconnelly/advent-of-code-2019/intcode"
 )
 
@@ -50,6 +51,22 @@ func (g game) writeLine(line string) {
 		g.in <- int64(c)
 	}
 	g.in <- '\n'
+}
+
+var commandToDir = map[string]geom.Direction{
+	"north": geom.Up,
+	"south": geom.Down,
+	"west":  geom.Left,
+	"east":  geom.Right,
+}
+
+func isDir(line string) bool {
+	for cmd := range commandToDir {
+		if cmd == line {
+			return true
+		}
+	}
+	return false
 }
 
 func (g game) loop() {

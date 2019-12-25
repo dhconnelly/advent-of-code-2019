@@ -35,10 +35,16 @@ func (chg change) apply(n *big.Int, mod *big.Int) {
 }
 
 func (chg change) invert(mod int64) invertedChange {
+	chg.mod(mod)
 	m := big.NewInt(mod)
+	scale := big.NewInt(0)
+	if chg.scale.Cmp(zero) != 0 {
+		scale = chg.scale.ModInverse(chg.scale, m)
+	}
 	shift := chg.shift.Mul(chg.shift, minusOne)
+	shift.Mul(shift, scale)
 	shift.Mod(shift, m)
-	return invertedChange{chg.scale.ModInverse(chg.scale, m), shift}
+	return invertedChange{scale, shift}
 }
 
 type invertedChange struct {
@@ -47,9 +53,33 @@ type invertedChange struct {
 }
 
 func (ichg invertedChange) apply(n *big.Int, mod *big.Int) {
-	n.Add(n, ichg.shift)
 	n.Mul(n, ichg.scale)
+	n.Add(n, ichg.shift)
 	n.Mod(n, mod)
+}
+
+func geoSum(a, r, n, mod *big.Int) {
+	var denom big.Int
+	denom.Set(one)
+	denom.Sub(&denom, r)
+	denom.ModInverse(&denom, mod)
+
+	r.Exp(r, n, mod)
+	r.Mul(r, minusOne)
+	r.Add(r, one)
+
+	r.Mul(r, &denom)
+	r.Mul(r, a)
+
+	a.Set(r)
+	a.Mod(a, mod)
+}
+
+func (ichg invertedChange) pow(n *big.Int, mod *big.Int) {
+	var scale big.Int
+	scale.Set(ichg.scale)
+	geoSum(ichg.shift, &scale, n, mod)
+	ichg.scale.Exp(ichg.scale, n, mod)
 }
 
 func ReadTransformations(r io.Reader) change {
@@ -89,26 +119,9 @@ func apply(n int64, mod int64, a applier, times int) int64 {
 	m := big.NewInt(mod)
 	for ; times > 0; times-- {
 		a.apply(x, m)
-		fmt.Println(x)
+		x.Mod(x, m)
 	}
 	return x.Int64()
-}
-
-func powerSum(x, y, m int64) (sum, power int64) {
-	total := big.NewInt(1)
-	pow := big.NewInt(x)
-	mod := big.NewInt(m)
-	base := big.NewInt(x)
-	for ; y-1 > 0; y-- {
-		if y%1000000 == 0 {
-			fmt.Println(y, pow, total)
-		}
-		pow.Mul(pow, base)
-		pow.Mod(pow, mod)
-		total.Add(total, pow)
-		total.Mod(pow, mod)
-	}
-	return total.Int64(), pow.Int64()
 }
 
 func main() {
@@ -121,8 +134,13 @@ func main() {
 	fmt.Println(apply(2019, 10007, chg, 1))
 
 	var mod int64 = 119315717514047
-	chg.mod(mod)
-	ichg := chg.invert(mod)
-	fmt.Println(powerSum(chg.scale.Int64(), 101741582076660, mod))
-	fmt.Println(apply(2020, mod, ichg, 100))
+	const n = 2020
+	const times = 101741582076661
+	i := chg.invert(mod)
+	m := big.NewInt(mod)
+	x := big.NewInt(n)
+	i.pow(big.NewInt(times), m)
+	i.apply(x, m)
+	x.Mod(x, m)
+	fmt.Println(x)
 }

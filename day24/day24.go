@@ -5,6 +5,8 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"github.com/dhconnelly/advent-of-code-2019/geom"
 )
 
 type bitset int64
@@ -122,6 +124,94 @@ func findRepeat(l layout) bitset {
 	}
 }
 
+type tile struct {
+	p     geom.Pt2
+	depth int
+}
+
+type grid struct {
+	width, height int
+	g             map[tile]bool
+}
+
+func toGrid(l layout) grid {
+	g := make(map[tile]bool)
+	for row := 0; row < l.height; row++ {
+		for col := 0; col < l.width; col++ {
+			t := tile{p: geom.Pt2{col, row}, depth: 0}
+			g[t] = l.alive(row, col)
+		}
+	}
+	delete(g, tile{p: geom.Pt2{2, 2}, depth: 0})
+	return grid{width: l.width, height: l.height, g: g}
+}
+
+func (g grid) adjacent(t tile) []tile {
+	var adj []tile
+
+	// left
+	if t.p.X > 0 && (t.p.X != 3 || t.p.Y != 2) {
+		q := t.p.Go(geom.Left)
+		adj = append(adj, tile{p: q, depth: t.depth})
+	} else if t.p.X == 0 {
+		q := geom.Pt2{1, 2}
+		adj = append(adj, tile{p: q, depth: t.depth + 1})
+	} else if t.p.X == 3 && t.p.Y == 2 {
+		for y := 0; y < g.height; y++ {
+			q := geom.Pt2{g.width - 1, y}
+			adj = append(adj, tile{p: q, depth: t.depth - 1})
+		}
+	}
+
+	// right
+	if t.p.X < g.width-1 && (t.p.X != 1 || t.p.Y != 2) {
+		q := t.p.Go(geom.Right)
+		adj = append(adj, tile{p: q, depth: t.depth})
+	} else if t.p.X == g.width-1 {
+		q := geom.Pt2{3, 2}
+		adj = append(adj, tile{p: q, depth: t.depth + 1})
+	} else if t.p.X == 1 && t.p.Y == 2 {
+		for y := 0; y < g.height; y++ {
+			q := geom.Pt2{0, y}
+			adj = append(adj, tile{p: q, depth: t.depth - 1})
+		}
+	}
+
+	// down
+	if t.p.Y > 0 && (t.p.X != 2 || t.p.Y != 3) {
+		q := t.p.Go(geom.Down)
+		adj = append(adj, tile{p: q, depth: t.depth})
+	} else if t.p.Y == 0 {
+		q := geom.Pt2{2, 1}
+		adj = append(adj, tile{p: q, depth: t.depth + 1})
+	} else if t.p.X == 2 && t.p.Y == 3 {
+		for x := 0; x < g.width; x++ {
+			q := geom.Pt2{x, g.height - 1}
+			adj = append(adj, tile{p: q, depth: t.depth - 1})
+		}
+	}
+
+	// up
+	if t.p.Y < g.height-1 && (t.p.X != 2 || t.p.Y != 1) {
+		q := t.p.Go(geom.Up)
+		adj = append(adj, tile{p: q, depth: t.depth})
+	} else if t.p.Y == g.height-1 {
+		q := geom.Pt2{2, 3}
+		adj = append(adj, tile{p: q, depth: t.depth + 1})
+	} else if t.p.X == 2 && t.p.Y == 1 {
+		for x := 0; x < g.width; x++ {
+			q := geom.Pt2{x, 0}
+			adj = append(adj, tile{p: q, depth: t.depth - 1})
+		}
+	}
+
+	return adj
+}
+
+func countBugs(g grid, n int) grid {
+	return g
+}
+
 func main() {
 	f, err := os.Open(os.Args[1])
 	if err != nil {
@@ -129,4 +219,13 @@ func main() {
 	}
 	l := readLayout(f)
 	fmt.Println(findRepeat(l))
+
+	g := toGrid(l)
+	fmt.Println(g.adjacent(tile{p: geom.Pt2{3, 3}, depth: 1}))
+	fmt.Println(g.adjacent(tile{p: geom.Pt2{1, 1}, depth: 0}))
+	fmt.Println(g.adjacent(tile{p: geom.Pt2{3, 0}, depth: 0}))
+	fmt.Println(g.adjacent(tile{p: geom.Pt2{4, 0}, depth: 0}))
+	fmt.Println(g.adjacent(tile{p: geom.Pt2{3, 2}, depth: 1}))
+	fmt.Println(g.adjacent(tile{p: geom.Pt2{3, 2}, depth: 0}))
+	//fmt.Println(countBugs(g, 200))
 }

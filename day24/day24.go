@@ -66,19 +66,6 @@ func (l *layout) next() {
 	l.bits = next
 }
 
-func (l layout) String() string {
-	n := l.width * l.height
-	b := make([]byte, n)
-	for j := 0; j < n; j++ {
-		if l.bits.get(j) {
-			b[j] = '#'
-		} else {
-			b[j] = '.'
-		}
-	}
-	return string(b)
-}
-
 func readLayout(r io.Reader) layout {
 	b := make([]byte, 1)
 	var l layout
@@ -129,20 +116,6 @@ type tile struct {
 	depth int
 }
 
-func printGrid(g grid, depth int) {
-	for _, row := range g.depth(depth) {
-		for _, alive := range row {
-			if alive {
-				fmt.Printf("%c", '#')
-			} else {
-				fmt.Printf("%c", '.')
-			}
-		}
-		fmt.Println()
-	}
-	fmt.Println()
-}
-
 type grid struct {
 	width, height int
 	g             map[tile]bool
@@ -156,17 +129,6 @@ func (g grid) countBugs() int {
 		}
 	}
 	return bugs
-}
-
-func (g grid) depth(depth int) [][]bool {
-	m := make([][]bool, g.height)
-	for row := 0; row < g.height; row++ {
-		m[row] = make([]bool, g.width)
-		for col := 0; col < g.width; col++ {
-			m[row][col] = g.g[tile{p: geom.Pt2{col, row}, depth: depth}]
-		}
-	}
-	return m
 }
 
 func (g grid) next() {
@@ -278,10 +240,6 @@ func (g grid) adjacent(t tile) []tile {
 	}
 
 	return adj
-}
-
-func countBugs(g grid, n int) grid {
-	return g
 }
 
 func main() {

@@ -1,30 +1,28 @@
-enum Direction {
+pub enum Direction {
     Up,
     Down,
     Left,
     Right,
 }
 
-use std::f64::consts::PI;
-
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct Point2 {
-    x: i32,
-    y: i32,
+pub struct Point2 {
+    pub x: i32,
+    pub y: i32,
 }
 
-const ZERO2: Point2 = Point2 { x: 0, y: 0 };
+pub const ZERO2: Point2 = Point2 { x: 0, y: 0 };
 
 impl Point2 {
-    fn manhattan_dist(&self, q: &Point2) -> i32 {
+    pub fn manhattan_dist(&self, q: &Point2) -> i32 {
         (self.x - q.x).abs() + (self.y - q.y).abs()
     }
 
-    fn manhattan_norm(&self) -> i32 {
+    pub fn manhattan_norm(&self) -> i32 {
         self.manhattan_dist(&Point2 { x: 0, y: 0 })
     }
 
-    fn go(&self, dir: Direction) -> Point2 {
+    pub fn go(&self, dir: Direction) -> Point2 {
         let mut q = *self;
         match dir {
             Direction::Up => q.y += 1,
@@ -35,7 +33,7 @@ impl Point2 {
         q
     }
 
-    fn manhattan_neighbors(&self) -> [Point2; 4] {
+    pub fn manhattan_neighbors(&self) -> [Point2; 4] {
         [
             self.go(Direction::Up),
             self.go(Direction::Down),
@@ -44,13 +42,13 @@ impl Point2 {
         ]
     }
 
-    fn angle_from(&self, q: &Point2) -> f64 {
+    pub fn angle_from(&self, q: &Point2) -> f64 {
         let x = (self.x - q.x) as f64;
         let y = (self.y - q.y) as f64;
         y.atan2(x)
     }
 
-    fn angle_to(&self, q: &Point2) -> f64 {
+    pub fn angle_to(&self, q: &Point2) -> f64 {
         q.angle_from(self)
     }
 }
@@ -85,6 +83,9 @@ fn manhattan_neighbors() {
         assert_eq!(p.manhattan_dist(q), 1);
     }
 }
+
+#[cfg(test)]
+use std::f64::consts::PI;
 
 #[test]
 fn angle_from() {

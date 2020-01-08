@@ -49,6 +49,10 @@ impl Point2 {
         let y = (self.y - q.y) as f64;
         y.atan2(x)
     }
+
+    fn angle_to(&self, q: &Point2) -> f64 {
+        q.angle_from(self)
+    }
 }
 
 #[test]

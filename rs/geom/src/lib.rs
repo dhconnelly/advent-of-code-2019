@@ -5,18 +5,22 @@ enum Direction {
     Right,
 }
 
+use std::f64::consts::PI;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Point2 {
-    x: i64,
-    y: i64,
+    x: i32,
+    y: i32,
 }
 
+const ZERO2: Point2 = Point2 { x: 0, y: 0 };
+
 impl Point2 {
-    fn manhattan_dist(&self, q: &Point2) -> i64 {
+    fn manhattan_dist(&self, q: &Point2) -> i32 {
         (self.x - q.x).abs() + (self.y - q.y).abs()
     }
 
-    fn manhattan_norm(&self) -> i64 {
+    fn manhattan_norm(&self) -> i32 {
         self.manhattan_dist(&Point2 { x: 0, y: 0 })
     }
 
@@ -38,6 +42,12 @@ impl Point2 {
             self.go(Direction::Left),
             self.go(Direction::Right),
         ]
+    }
+
+    fn angle_from(&self, q: &Point2) -> f64 {
+        let x = (self.x - q.x) as f64;
+        let y = (self.y - q.y) as f64;
+        y.atan2(x)
     }
 }
 
@@ -70,4 +80,11 @@ fn manhattan_neighbors() {
     for q in nbrs.iter() {
         assert_eq!(p.manhattan_dist(q), 1);
     }
+}
+
+#[test]
+fn angle_from() {
+    let p = Point2 { x: 1, y: 1 };
+    assert_eq!(p.angle_from(&ZERO2), PI / 4.0);
+    assert_eq!(ZERO2.angle_from(&p), -3.0 * PI / 4.0);
 }

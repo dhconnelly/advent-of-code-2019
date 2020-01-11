@@ -1,3 +1,4 @@
+#[derive(Copy, Clone, Debug)]
 pub enum Direction {
     Up,
     Down,
@@ -5,7 +6,7 @@ pub enum Direction {
     Right,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Point2 {
     pub x: i32,
     pub y: i32,

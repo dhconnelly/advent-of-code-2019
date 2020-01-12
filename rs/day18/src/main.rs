@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::env;
-use std::fmt;
 use std::fs;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
@@ -48,10 +47,19 @@ struct Edge {
     dist: i32,
 }
 
+#[derive(Copy, Clone)]
 struct BfsNode {
-    p: geom::Point2,
-    t: Tile,
+    n: Node,
     dist: i32,
+}
+
+impl BfsNode {
+    fn new(p: geom::Point2, t: Tile, dist: i32) -> BfsNode {
+        BfsNode {
+            n: Node { p, t },
+            dist,
+        }
+    }
 }
 
 fn neighbors(
@@ -70,36 +78,27 @@ fn neighbors(
 fn bfs(from: &geom::Point2, tiles: &HashMap<geom::Point2, Tile>) -> Vec<Edge> {
     let mut es = Vec::new();
     let mut q = VecDeque::<BfsNode>::new();
-    q.push_back(BfsNode {
-        p: *from,
-        t: tiles[from],
-        dist: 0,
-    });
+    let from_node = BfsNode::new(*from, tiles[from], 0);
+    q.push_back(from_node.clone());
     let mut v = HashMap::<geom::Point2, bool>::new();
     v.insert(*from, true);
     while q.len() > 0 {
         let head = q.pop_front().unwrap();
-        let nbrs = head.p.manhattan_neighbors();
-        for nbr in neighbors(&head.p, &tiles, &v) {
+        for nbr in neighbors(&head.n.p, &tiles, &v) {
             let nbr_t = &tiles[&nbr];
             v.insert(nbr, true);
             match nbr_t {
-                Tile::Key(ch) | Tile::Door(ch) => es.push(Edge {
-                    from: Node {
-                        p: *from,
-                        t: tiles[from],
-                    },
+                Tile::Key(_) | Tile::Door(_) => es.push(Edge {
+                    from: from_node.n,
                     to: Node { p: nbr, t: *nbr_t },
                     dist: head.dist + 1,
                 }),
                 _ => (),
             }
             match nbr_t {
-                Tile::Key(_) | Tile::Passage | Tile::Entrance => q.push_back(BfsNode {
-                    p: nbr,
-                    t: *nbr_t,
-                    dist: head.dist + 1,
-                }),
+                Tile::Key(_) | Tile::Passage | Tile::Entrance => {
+                    q.push_back(BfsNode::new(nbr, *nbr_t, head.dist + 1))
+                }
                 _ => (),
             }
         }
@@ -110,7 +109,7 @@ fn bfs(from: &geom::Point2, tiles: &HashMap<geom::Point2, Tile>) -> Vec<Edge> {
 fn reachable_graph(tiles: &HashMap<geom::Point2, Tile>) -> HashMap<Node, Vec<Edge>> {
     tiles
         .iter()
-        .filter(|(p, t)| match t {
+        .filter(|(_, t)| match t {
             Tile::Key(_) => true,
             Tile::Door(_) => true,
             _ => false,

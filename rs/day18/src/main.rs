@@ -12,7 +12,7 @@ enum Tile {
     Door(u8),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Node {
     p: geom::Point2,
     t: Tile,
@@ -44,7 +44,7 @@ struct Map {
     tiles: HashMap<geom::Point2, Node>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct KeySet {
     keys: [bool; 26],
 }
@@ -151,14 +151,39 @@ impl Map {
     }
 }
 
-fn shortest_path_with(map: &Map, from: &Node, keys: &KeySet, remaining: i32) -> Option<i32> {
+#[derive(Hash, PartialEq, Eq)]
+struct MemoKey {
+    from: Node,
+    keys: KeySet,
+}
+
+impl MemoKey {
+    fn new(from: &Node, keys: &KeySet) -> MemoKey {
+        MemoKey {
+            from: from.clone(),
+            keys: keys.clone(),
+        }
+    }
+}
+
+fn shortest_path_with(
+    map: &Map,
+    from: &Node,
+    keys: &KeySet,
+    remaining: i32,
+    memo: &mut HashMap<MemoKey, i32>,
+) -> Option<i32> {
     if remaining == 0 {
         return Some(0);
+    }
+    let mk = MemoKey::new(from, keys);
+    if memo.contains_key(&mk) {
+        return Some(memo[&mk]);
     }
     let mut min_dist = None;
     for key in map.reachable_keys(from, keys) {
         let node = key.node;
-        match shortest_path_with(map, node, &keys.with(node.key_value()), remaining - 1) {
+        match shortest_path_with(map, node, &keys.with(node.key_value()), remaining - 1, memo) {
             None => continue,
             Some(dist) => {
                 let dist = dist + key.dist;
@@ -166,6 +191,9 @@ fn shortest_path_with(map: &Map, from: &Node, keys: &KeySet, remaining: i32) -> 
                 min_dist.replace(min.min(dist));
             }
         }
+    }
+    if min_dist.is_some() {
+        memo.insert(mk, min_dist.unwrap());
     }
     min_dist
 }
@@ -176,6 +204,7 @@ fn shortest_path(map: &Map) -> i32 {
         map.entrance().unwrap(),
         &KeySet::new(),
         map.keys().count() as i32,
+        &mut HashMap::new(),
     )
     .unwrap()
 }

@@ -40,11 +40,6 @@ impl BfsNode<'_> {
     }
 }
 
-#[derive(Debug)]
-struct Map {
-    tiles: HashMap<geom::Point2, Node>,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct KeySet {
     keys: usize,
@@ -78,6 +73,11 @@ impl fmt::Display for KeySet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:b}", self.keys)
     }
+}
+
+#[derive(Debug)]
+struct Map {
+    tiles: HashMap<geom::Point2, Node>,
 }
 
 impl Map {
@@ -115,12 +115,39 @@ impl Map {
         }
     }
 
-    fn reachable_keys<'a>(&'a self, from: &'a Node, with_keys: &KeySet) -> Vec<BfsNode<'a>> {
+    fn keys(&self) -> impl Iterator<Item = &Node> {
+        self.tiles.values().filter(|n| {
+            if let Tile::Key(_) = n.t {
+                return true;
+            }
+            false
+        })
+    }
+}
+
+struct Explorer<'a> {
+    map: &'a Map,
+    q: VecDeque<BfsNode<'a>>,
+    v: HashMap<&'a geom::Point2, bool>,
+}
+
+impl<'a> Explorer<'a> {
+    fn new(map: &Map) -> Explorer {
+        Explorer {
+            map: map,
+            q: VecDeque::new(),
+            v: HashMap::new(),
+        }
+    }
+
+    fn reachable_keys(&mut self, from: &'a Node, with_keys: &KeySet) -> Vec<BfsNode<'a>> {
         let mut keys = Vec::new();
-        let mut q = VecDeque::new();
+        let q = &mut self.q;
+        q.clear();
         q.push_back(BfsNode::new(from, 0));
-        let mut v = HashMap::new();
-        v.insert(from.p, true);
+        let v = &mut self.v;
+        v.clear();
+        v.insert(&from.p, true);
         while !q.is_empty() {
             let front = q.pop_front().unwrap();
             if let Tile::Key(key) = front.node.t {
@@ -129,10 +156,10 @@ impl Map {
                 }
             }
             for nbr in &front.node.p.manhattan_neighbors() {
-                if let Some(nbr) = self.tiles.get(nbr) {
-                    if self.passable(nbr, with_keys) && !v.contains_key(&nbr.p) {
+                if let Some(nbr) = self.map.tiles.get(nbr) {
+                    if self.map.passable(nbr, with_keys) && !v.contains_key(&nbr.p) {
                         q.push_back(BfsNode::new(nbr, front.dist + 1));
-                        v.insert(front.node.p, true);
+                        v.insert(&front.node.p, true);
                     }
                 }
             }
@@ -140,13 +167,35 @@ impl Map {
         keys
     }
 
-    fn keys(&self) -> impl Iterator<Item = &Node> {
-        self.tiles.values().filter(|n| {
-            if let Tile::Key(_) = n.t {
-                return true;
+    fn shortest_path_with(
+        &mut self,
+        from: &'a Node,
+        keys: &KeySet,
+        remaining: i32,
+        memo: &mut HashMap<MemoKey, Option<i32>>,
+    ) -> Option<i32> {
+        let mk = MemoKey::new(from, keys);
+        if memo.contains_key(&mk) {
+            return memo[&mk];
+        }
+        if remaining == 0 {
+            return Some(0);
+        }
+        let mut min_dist = None;
+        let reachable = self.reachable_keys(from, keys);
+        for key in &reachable {
+            let node = key.node;
+            match self.shortest_path_with(node, &keys.with(node.key_value()), remaining - 1, memo) {
+                None => continue,
+                Some(dist) => {
+                    let dist = dist + key.dist;
+                    let min = *min_dist.get_or_insert(dist);
+                    min_dist.replace(min.min(dist));
+                }
             }
-            false
-        })
+        }
+        memo.insert(mk, min_dist);
+        min_dist
     }
 }
 
@@ -165,45 +214,16 @@ impl MemoKey {
     }
 }
 
-fn shortest_path_with(
-    map: &Map,
-    from: &Node,
-    keys: &KeySet,
-    remaining: i32,
-    memo: &mut HashMap<MemoKey, Option<i32>>,
-) -> Option<i32> {
-    let mk = MemoKey::new(from, keys);
-    if memo.contains_key(&mk) {
-        return memo[&mk];
-    }
-    if remaining == 0 {
-        return Some(0);
-    }
-    let mut min_dist = None;
-    for key in map.reachable_keys(from, keys) {
-        let node = key.node;
-        match shortest_path_with(map, node, &keys.with(node.key_value()), remaining - 1, memo) {
-            None => continue,
-            Some(dist) => {
-                let dist = dist + key.dist;
-                let min = *min_dist.get_or_insert(dist);
-                min_dist.replace(min.min(dist));
-            }
-        }
-    }
-    memo.insert(mk, min_dist);
-    min_dist
-}
-
 fn shortest_path(map: &Map) -> i32 {
-    shortest_path_with(
-        map,
-        map.entrance().unwrap(),
-        &KeySet::new(),
-        map.keys().count() as i32,
-        &mut HashMap::new(),
-    )
-    .unwrap()
+    let mut explorer = Explorer::new(map);
+    explorer
+        .shortest_path_with(
+            map.entrance().unwrap(),
+            &KeySet::new(),
+            map.keys().count() as i32,
+            &mut HashMap::new(),
+        )
+        .unwrap()
 }
 
 fn main() {

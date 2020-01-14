@@ -12,259 +12,177 @@ enum Tile {
     Door(u8),
 }
 
-fn read_map(s: &str) -> HashMap<geom::Point2, Tile> {
-    let mut m = HashMap::new();
-    let mut p = geom::ZERO2;
-    for line in s.trim().lines() {
-        for ch in line.bytes() {
-            let t = match ch {
-                b'@' => Tile::Entrance,
-                b'#' => Tile::Wall,
-                b'.' => Tile::Passage,
-                b'a'..=b'z' => Tile::Key(ch),
-                b'A'..=b'Z' => Tile::Door(ch),
-                _ => panic!(format!("bad tile: {}", ch)),
-            };
-            m.insert(p, t);
-            p.x += 1;
-        }
-        p.x = 0;
-        p.y += 1;
-    }
-    m
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Debug)]
 struct Node {
     p: geom::Point2,
     t: Tile,
 }
 
-#[derive(Copy, Clone)]
-struct BfsNode {
-    n: Node,
+impl Node {
+    fn key_value(&self) -> u8 {
+        if let Tile::Key(key) = self.t {
+            return key;
+        }
+        panic!("not a key");
+    }
+}
+
+#[derive(Clone)]
+struct BfsNode<'a> {
+    node: &'a Node,
     dist: i32,
 }
 
-impl BfsNode {
-    fn new(p: geom::Point2, t: Tile, dist: i32) -> BfsNode {
-        BfsNode {
-            n: Node { p, t },
-            dist,
-        }
+impl BfsNode<'_> {
+    fn new(node: &Node, dist: i32) -> BfsNode {
+        BfsNode { node, dist }
     }
 }
 
-fn neighbors(
-    p: &geom::Point2,
-    tiles: &HashMap<geom::Point2, Tile>,
-    v: &HashMap<geom::Point2, bool>,
-) -> Vec<geom::Point2> {
-    p.manhattan_neighbors()
-        .iter()
-        .copied()
-        .filter(|q| tiles.get(q).unwrap_or(&Tile::Wall) != &Tile::Wall)
-        .filter(|q| !v.get(q).unwrap_or(&false))
-        .collect()
+#[derive(Debug)]
+struct Map {
+    tiles: HashMap<geom::Point2, Node>,
 }
 
-fn bfs(from: &geom::Point2, tiles: &HashMap<geom::Point2, Tile>) -> HashMap<Node, i32> {
-    let mut es = HashMap::new();
-    let mut q = VecDeque::<BfsNode>::new();
-    let from_node = BfsNode::new(*from, tiles[from], 0);
-    q.push_back(from_node.clone());
-    let mut v = HashMap::<geom::Point2, bool>::new();
-    v.insert(*from, true);
-    while q.len() > 0 {
-        let head = q.pop_front().unwrap();
-        for nbr in neighbors(&head.n.p, &tiles, &v) {
-            let nbr_t = &tiles[&nbr];
-            v.insert(nbr, true);
-            match nbr_t {
-                Tile::Key(_) | Tile::Door(_) => {
-                    es.insert(Node { p: nbr, t: *nbr_t }, head.dist + 1);
-                }
-                _ => (),
+#[derive(Clone, Debug)]
+struct KeySet {
+    keys: [bool; 26],
+}
+
+impl KeySet {
+    fn new() -> KeySet {
+        KeySet { keys: [false; 26] }
+    }
+
+    fn with(&self, key: u8) -> KeySet {
+        let mut ks = self.clone();
+        ks.add(key);
+        ks
+    }
+
+    fn add(&mut self, key: u8) {
+        self.keys[(key - b'a') as usize] = true;
+    }
+
+    fn unlocks_door(&self, door: u8) -> bool {
+        self.has(door + 32u8)
+    }
+
+    fn has(&self, key: u8) -> bool {
+        self.keys[(key - b'a') as usize]
+    }
+}
+
+impl Map {
+    fn new(s: &str) -> Map {
+        let mut m = HashMap::new();
+        let mut p = geom::ZERO2;
+        for line in s.trim().lines() {
+            for ch in line.bytes() {
+                let t = match ch {
+                    b'@' => Tile::Entrance,
+                    b'#' => Tile::Wall,
+                    b'.' => Tile::Passage,
+                    b'a'..=b'z' => Tile::Key(ch),
+                    b'A'..=b'Z' => Tile::Door(ch),
+                    _ => panic!(format!("bad tile: {}", ch)),
+                };
+                m.insert(p, Node { p, t });
+                p.x += 1;
             }
-            match nbr_t {
-                Tile::Key(_) | Tile::Passage | Tile::Entrance => {
-                    q.push_back(BfsNode::new(nbr, *nbr_t, head.dist + 1))
-                }
-                _ => (),
-            }
+            p.x = 0;
+            p.y += 1;
+        }
+        Map { tiles: m }
+    }
+
+    fn entrance(&self) -> Option<&Node> {
+        self.tiles.values().filter(|n| n.t == Tile::Entrance).next()
+    }
+
+    fn neighbors<'a>(&'a self, node: &'a Node) -> Vec<&'a Node> {
+        node.p
+            .manhattan_neighbors()
+            .iter()
+            .map(|q| self.tiles.get(q))
+            .filter(|n| n.is_some())
+            .map(|n| n.unwrap())
+            .collect()
+    }
+
+    fn passable(&self, node: &Node, keys: &KeySet) -> bool {
+        match node.t {
+            Tile::Entrance | Tile::Passage | Tile::Key(_) => true,
+            Tile::Door(door) => keys.unlocks_door(door),
+            Tile::Wall => false,
         }
     }
-    es
-}
 
-fn reachable_graph(tiles: &HashMap<geom::Point2, Tile>) -> HashMap<Node, HashMap<Node, i32>> {
-    tiles
-        .iter()
-        .filter(|(_, t)| match t {
-            Tile::Key(_) | Tile::Door(_) | Tile::Entrance => true,
-            _ => false,
+    fn reachable_keys<'a>(&'a self, from: &'a Node, with_keys: &KeySet) -> Vec<BfsNode<'a>> {
+        let mut keys = Vec::new();
+        let mut q = VecDeque::new();
+        q.push_back(BfsNode::new(from, 0));
+        let mut v = HashMap::new();
+        v.insert(from.p, true);
+        while !q.is_empty() {
+            let front = q.pop_front().unwrap();
+            if let Tile::Key(key) = front.node.t {
+                if !with_keys.has(key) {
+                    keys.push(front.clone());
+                }
+            }
+            for nbr in self.neighbors(front.node) {
+                if self.passable(nbr, with_keys) && !v.contains_key(&nbr.p) {
+                    q.push_back(BfsNode::new(nbr, front.dist + 1));
+                    v.insert(front.node.p, true);
+                }
+            }
+        }
+        keys
+    }
+
+    fn keys(&self) -> impl Iterator<Item = &Node> {
+        self.tiles.values().filter(|n| {
+            if let Tile::Key(_) = n.t {
+                return true;
+            }
+            false
         })
-        .map(|(p, t)| (Node { p: *p, t: *t }, bfs(p, tiles)))
-        .collect()
-}
-
-fn find_entrance(g: &HashMap<Node, HashMap<Node, i32>>) -> Node {
-    *g.keys().filter(|n| n.t == Tile::Entrance).next().unwrap()
-}
-
-#[derive(Hash, PartialEq, Eq, Clone)]
-struct State {
-    from: Node,
-    have: i32,
-}
-
-impl State {
-    fn new(from: Node, have: i32) -> State {
-        State { from, have }
     }
 }
 
-fn is_key(n: &Node) -> bool {
-    if let Tile::Key(_) = n.t {
-        return true;
-    }
-    false
-}
-
-fn is_door(n: &Node) -> bool {
-    if let Tile::Door(_) = n.t {
-        return true;
-    }
-    false
-}
-
-fn value(n: &Node) -> u8 {
-    match n.t {
-        Tile::Door(x) => x,
-        Tile::Key(x) => x,
-        _ => panic!("no value"),
-    }
-}
-
-fn door_for_key(key: &Node, g: &HashMap<Node, HashMap<Node, i32>>) -> Option<Node> {
-    let val = value(key);
-    g.keys()
-        .copied()
-        .filter(is_door)
-        .filter(|nd| value(nd) == val - 32)
-        .next()
-}
-
-fn remove(h: &mut HashMap<Node, HashMap<Node, i32>>, nd: &Node) {
-    for (_, es) in h {
-        es.remove(nd);
-    }
-}
-
-fn connect_via(h: &mut HashMap<Node, HashMap<Node, i32>>, nd: &Node) {
-    let mut new_edges = HashMap::<Node, HashMap<Node, i32>>::new();
-    for (to1, d1) in &h[&nd] {
-        for (to2, d2) in &h[&nd] {
-            if to1 == to2 {
-                continue;
-            }
-            if h[to2].contains_key(to1) {
-                continue;
-            }
-            new_edges.entry(*to1).or_default().insert(*to2, d1 + d2);
-        }
-    }
-    for (k1, v1) in new_edges.iter() {
-        for (k2, v2) in v1.iter() {
-            h.entry(*k1).or_default().insert(*k2, *v2);
-        }
-    }
-}
-
-fn take_key(
-    g: &HashMap<Node, HashMap<Node, i32>>,
-    key: &Node,
-) -> HashMap<Node, HashMap<Node, i32>> {
-    let mut h = g.clone();
-    if let Some(door) = door_for_key(key, g) {
-        connect_via(&mut h, &door);
-        remove(&mut h, &door);
-        h.remove(&door);
-    }
-    remove(&mut h, key);
-    h
-}
-
-fn key_neighbors<'a>(
-    from: &Node,
-    g: &'a HashMap<Node, HashMap<Node, i32>>,
-) -> Vec<(&'a Node, &'a i32)> {
-    if let Some(edges) = g.get(from) {
-        return edges.iter().filter(|(n, _)| is_key(*n)).collect();
-    }
-    vec![]
-}
-
-fn have_with(have: i32, item: usize) -> i32 {
-    have | (1 << item)
-}
-
-fn which(key: &Node) -> usize {
-    (value(key) - b'a') as usize
-}
-
-fn print_graph(g: &HashMap<Node, HashMap<Node, i32>>) {
-    for (from, tos) in g {
-        for (to, dist) in tos {
-            println!("{:?} -> {:?} ({})", from.t, to.t, dist);
-        }
-    }
-}
-
-fn shortest_path_from(
-    from: &Node,
-    have: i32,
-    remaining: usize,
-    g: &HashMap<Node, HashMap<Node, i32>>,
-    memo: &mut HashMap<State, i32>,
-) -> Option<i32> {
+fn shortest_path_with(map: &Map, from: &Node, keys: &KeySet, remaining: i32) -> Option<i32> {
     if remaining == 0 {
         return Some(0);
     }
-    let state = State::new(*from, have);
-    if memo.contains_key(&state) {
-        return Some(memo[&state]);
-    }
-    //println!("{:?}, {:b}, {:?}", from, have, remaining);
-    //print_graph(g);
     let mut min_dist = None;
-    for (key, key_dist) in key_neighbors(from, g) {
-        let g_next = take_key(g, &key);
-        let have_next = have_with(have, which(key));
-        let dist = match shortest_path_from(&key, have_next, remaining - 1, &g_next, memo) {
+    for key in map.reachable_keys(from, keys) {
+        let node = key.node;
+        match shortest_path_with(map, node, &keys.with(node.key_value()), remaining - 1) {
             None => continue,
-            Some(x) => x + key_dist,
-        };
-        if min_dist == None || dist < min_dist.unwrap() {
-            min_dist = Some(dist);
-            memo.insert(state.clone(), dist);
+            Some(dist) => {
+                let dist = dist + key.dist;
+                let min = *min_dist.get_or_insert(dist);
+                min_dist.replace(min.min(dist));
+            }
         }
     }
     min_dist
 }
 
-fn shortest_path(g: &HashMap<Node, HashMap<Node, i32>>) -> i32 {
-    let from = find_entrance(&g);
-    let g = g.clone();
-    let mut memo = HashMap::new();
-    let remaining = g.keys().copied().filter(is_key).count();
-    shortest_path_from(&from, 0, remaining, &g, &mut memo).unwrap()
+fn shortest_path(map: &Map) -> i32 {
+    shortest_path_with(
+        map,
+        map.entrance().unwrap(),
+        &KeySet::new(),
+        map.keys().count() as i32,
+    )
+    .unwrap()
 }
 
 fn main() {
     let path = env::args().nth(1).expect("missing input path");
     let s = fs::read_to_string(path).expect("can't read input");
-    let m = read_map(&s);
-    let g = reachable_graph(&m);
-    println!("{}", shortest_path(&g));
+    let m = Map::new(&s);
+    println!("{}", shortest_path(&m));
 }

@@ -47,12 +47,12 @@ struct Map {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct KeySet {
-    keys: [bool; 26],
+    keys: usize,
 }
 
 impl KeySet {
     fn new() -> KeySet {
-        KeySet { keys: [false; 26] }
+        KeySet { keys: 0 }
     }
 
     fn with(&self, key: u8) -> KeySet {
@@ -62,7 +62,7 @@ impl KeySet {
     }
 
     fn add(&mut self, key: u8) {
-        self.keys[(key - b'a') as usize] = true;
+        self.keys |= 1 << (key - b'a') as usize;
     }
 
     fn unlocks_door(&self, door: u8) -> bool {
@@ -70,21 +70,13 @@ impl KeySet {
     }
 
     fn has(&self, key: u8) -> bool {
-        self.keys[(key - b'a') as usize]
+        (self.keys & (1 << (key - b'a') as usize)) > 0
     }
 }
 
 impl fmt::Display for KeySet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = String::from_utf8(
-            (b'a'..=b'z')
-                .zip(self.keys.iter().copied())
-                .filter(|(_, t)| *t)
-                .map(|(c, _)| c)
-                .collect(),
-        )
-        .unwrap();
-        write!(f, "{}", s)
+        write!(f, "{:b}", self.keys)
     }
 }
 
@@ -115,16 +107,6 @@ impl Map {
         self.tiles.values().filter(|n| n.t == Tile::Entrance).next()
     }
 
-    fn neighbors<'a>(&'a self, node: &'a Node) -> Vec<&'a Node> {
-        node.p
-            .manhattan_neighbors()
-            .iter()
-            .map(|q| self.tiles.get(q))
-            .filter(|n| n.is_some())
-            .map(|n| n.unwrap())
-            .collect()
-    }
-
     fn passable(&self, node: &Node, keys: &KeySet) -> bool {
         match node.t {
             Tile::Entrance | Tile::Passage | Tile::Key(_) => true,
@@ -146,10 +128,12 @@ impl Map {
                     keys.push(front.clone());
                 }
             }
-            for nbr in self.neighbors(front.node) {
-                if self.passable(nbr, with_keys) && !v.contains_key(&nbr.p) {
-                    q.push_back(BfsNode::new(nbr, front.dist + 1));
-                    v.insert(front.node.p, true);
+            for nbr in &front.node.p.manhattan_neighbors() {
+                if let Some(nbr) = self.tiles.get(nbr) {
+                    if self.passable(nbr, with_keys) && !v.contains_key(&nbr.p) {
+                        q.push_back(BfsNode::new(nbr, front.dist + 1));
+                        v.insert(front.node.p, true);
+                    }
                 }
             }
         }
@@ -195,7 +179,6 @@ fn shortest_path_with(
     if remaining == 0 {
         return Some(0);
     }
-    //println!("{:?} {}, {} ", from, keys, remaining);
     let mut min_dist = None;
     for key in map.reachable_keys(from, keys) {
         let node = key.node;

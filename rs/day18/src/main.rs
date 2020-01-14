@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::env;
+use std::fmt;
 use std::fs;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
@@ -70,6 +71,20 @@ impl KeySet {
 
     fn has(&self, key: u8) -> bool {
         self.keys[(key - b'a') as usize]
+    }
+}
+
+impl fmt::Display for KeySet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = String::from_utf8(
+            (b'a'..=b'z')
+                .zip(self.keys.iter().copied())
+                .filter(|(_, t)| *t)
+                .map(|(c, _)| c)
+                .collect(),
+        )
+        .unwrap();
+        write!(f, "{}", s)
     }
 }
 
@@ -151,7 +166,7 @@ impl Map {
     }
 }
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Hash, PartialEq, Eq, Debug)]
 struct MemoKey {
     from: Node,
     keys: KeySet,
@@ -171,15 +186,16 @@ fn shortest_path_with(
     from: &Node,
     keys: &KeySet,
     remaining: i32,
-    memo: &mut HashMap<MemoKey, i32>,
+    memo: &mut HashMap<MemoKey, Option<i32>>,
 ) -> Option<i32> {
+    let mk = MemoKey::new(from, keys);
+    if memo.contains_key(&mk) {
+        return memo[&mk];
+    }
     if remaining == 0 {
         return Some(0);
     }
-    let mk = MemoKey::new(from, keys);
-    if memo.contains_key(&mk) {
-        return Some(memo[&mk]);
-    }
+    //println!("{:?} {}, {} ", from, keys, remaining);
     let mut min_dist = None;
     for key in map.reachable_keys(from, keys) {
         let node = key.node;
@@ -192,9 +208,7 @@ fn shortest_path_with(
             }
         }
     }
-    if min_dist.is_some() {
-        memo.insert(mk, min_dist.unwrap());
-    }
+    memo.insert(mk, min_dist);
     min_dist
 }
 

@@ -134,10 +134,10 @@ impl Machine {
         *self.mem.get(&i).unwrap_or(&0)
     }
 
-    fn load(&self, arg: Arg) -> i64 {
+    fn load(&self, arg: &Arg) -> i64 {
         let val = match arg {
-            Arg::Pos(i) => self.get(i),
-            Arg::Imm(i) => i,
+            Arg::Pos(i) => self.get(*i),
+            Arg::Imm(i) => *i,
         };
         val
     }
@@ -146,9 +146,9 @@ impl Machine {
         self.mem.insert(i, x);
     }
 
-    fn store(&mut self, arg: Arg, x: i64) -> Result<(), String> {
+    fn store(&mut self, arg: &Arg, x: i64) -> Result<(), String> {
         if let Arg::Pos(i) = arg {
-            self.mem.insert(i, x);
+            self.set(*i, x);
             Ok(())
         } else {
             Err(format!("bad mode for write: {:?}", arg))
@@ -175,41 +175,30 @@ impl Machine {
         Ok(instr)
     }
 
-    fn step(&mut self) -> Result<(), String> {
-        if self.state == State::Halted {
-            return Err(format!("bad machine state: {:?}", self.state));
-        }
-
-        if self.state == State::Reading {
-            let instr = self.instr.ok_or("no instruction while reading")?;
-            if let Instruction::Read(x) = instr {
-                self.store(x, self.input)?;
-                self.pc += 2;
-            } else {
-                return Err(format!("non-read instruction while reading: {:?}", instr));
-            }
-        }
-
-        self.instr = Some(self.get_instr()?);
-        match self.instr.unwrap() {
+    fn exec(&mut self, instr: &Instruction) -> Result<(), String> {
+        match instr {
             Instruction::Add(x, y, z) => {
                 self.store(z, self.load(x) + self.load(y))?;
                 self.state = State::Running;
                 self.pc += 4;
             }
+
             Instruction::Mul(x, y, z) => {
                 self.store(z, self.load(x) * self.load(y))?;
                 self.state = State::Running;
                 self.pc += 4;
             }
+
             Instruction::Read(_) => {
                 self.state = State::Reading;
             }
+
             Instruction::Write(x) => {
                 self.output = self.load(x);
                 self.state = State::Writing;
                 self.pc += 2;
             }
+
             Instruction::JmpIf(x, y) => {
                 if self.load(x) != 0 {
                     self.pc = self.load(y);
@@ -218,6 +207,7 @@ impl Machine {
                 }
                 self.state = State::Running;
             }
+
             Instruction::JmpNot(x, y) => {
                 if self.load(x) == 0 {
                     self.pc = self.load(y);
@@ -226,6 +216,7 @@ impl Machine {
                 }
                 self.state = State::Running;
             }
+
             Instruction::Lt(x, y, z) => {
                 if self.load(x) < self.load(y) {
                     self.store(z, 1)?;
@@ -235,6 +226,7 @@ impl Machine {
                 self.pc += 4;
                 self.state = State::Running;
             }
+
             Instruction::Eq(x, y, z) => {
                 if self.load(x) == self.load(y) {
                     self.store(z, 1)?;
@@ -244,11 +236,29 @@ impl Machine {
                 self.pc += 4;
                 self.state = State::Running;
             }
+
             Instruction::Halt => {
                 self.state = State::Halted;
             }
         }
         Ok(())
+    }
+
+    fn step(&mut self) -> Result<(), String> {
+        if self.state == State::Halted {
+            return Err(format!("bad machine state: {:?}", self.state));
+        }
+        if self.state == State::Reading {
+            let instr = self.instr.ok_or("no instruction while reading")?;
+            if let Instruction::Read(x) = instr {
+                self.store(&x, self.input)?;
+                self.pc += 2;
+            } else {
+                return Err(format!("non-read instruction while reading: {:?}", instr));
+            }
+        }
+        self.instr = Some(self.get_instr()?);
+        self.exec(&self.instr.unwrap())
     }
 
     pub fn run(&mut self) -> Result<State, String> {

@@ -32,6 +32,10 @@ enum Opcode {
     Mul,
     Read,
     Write,
+    JmpIf,
+    JmpNot,
+    Lt,
+    Eq,
     Halt,
 }
 
@@ -42,6 +46,10 @@ impl Opcode {
             2 => Ok(Opcode::Mul),
             3 => Ok(Opcode::Read),
             4 => Ok(Opcode::Write),
+            5 => Ok(Opcode::JmpIf),
+            6 => Ok(Opcode::JmpNot),
+            7 => Ok(Opcode::Lt),
+            8 => Ok(Opcode::Eq),
             99 => Ok(Opcode::Halt),
             _ => Err(format!("unknown opcode: {}", x)),
         }
@@ -78,6 +86,10 @@ enum Instruction {
     Mul(Arg, Arg, Arg),
     Read(Arg),
     Write(Arg),
+    JmpIf(Arg, Arg),
+    JmpNot(Arg, Arg),
+    Lt(Arg, Arg, Arg),
+    Eq(Arg, Arg, Arg),
     Halt,
 }
 
@@ -154,6 +166,10 @@ impl Machine {
             Opcode::Mul => Instruction::Mul(args.0, args.1, args.2),
             Opcode::Read => Instruction::Read(args.0),
             Opcode::Write => Instruction::Write(args.0),
+            Opcode::JmpIf => Instruction::JmpIf(args.0, args.1),
+            Opcode::JmpNot => Instruction::JmpNot(args.0, args.1),
+            Opcode::Lt => Instruction::Lt(args.0, args.1, args.2),
+            Opcode::Eq => Instruction::Eq(args.0, args.1, args.2),
             Opcode::Halt => Instruction::Halt,
         };
         Ok(instr)
@@ -163,6 +179,7 @@ impl Machine {
         if self.state == State::Halted {
             return Err(format!("bad machine state: {:?}", self.state));
         }
+
         if self.state == State::Reading {
             let instr = self.instr.ok_or("no instruction while reading")?;
             if let Instruction::Read(x) = instr {
@@ -172,6 +189,7 @@ impl Machine {
                 return Err(format!("non-read instruction while reading: {:?}", instr));
             }
         }
+
         self.instr = Some(self.get_instr()?);
         match self.instr.unwrap() {
             Instruction::Add(x, y, z) => {
@@ -191,6 +209,40 @@ impl Machine {
                 self.output = self.load(x);
                 self.state = State::Writing;
                 self.pc += 2;
+            }
+            Instruction::JmpIf(x, y) => {
+                if self.load(x) != 0 {
+                    self.pc = self.load(y);
+                } else {
+                    self.pc += 3;
+                }
+                self.state = State::Running;
+            }
+            Instruction::JmpNot(x, y) => {
+                if self.load(x) == 0 {
+                    self.pc = self.load(y);
+                } else {
+                    self.pc += 3;
+                }
+                self.state = State::Running;
+            }
+            Instruction::Lt(x, y, z) => {
+                if self.load(x) < self.load(y) {
+                    self.store(z, 1)?;
+                } else {
+                    self.store(z, 0)?;
+                }
+                self.pc += 4;
+                self.state = State::Running;
+            }
+            Instruction::Eq(x, y, z) => {
+                if self.load(x) == self.load(y) {
+                    self.store(z, 1)?;
+                } else {
+                    self.store(z, 0)?;
+                }
+                self.pc += 4;
+                self.state = State::Running;
             }
             Instruction::Halt => {
                 self.state = State::Halted;

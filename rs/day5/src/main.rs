@@ -28,5 +28,6 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     let text = fs::read_to_string(&path)?;
     let prog = intcode::Program::new(&text)?;
     println!("{}", run(&prog, 1)?);
+    println!("{}", run(&prog, 5)?);
     Ok(())
 }

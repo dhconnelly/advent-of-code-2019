@@ -36,6 +36,7 @@ enum Opcode {
     JmpNot,
     Lt,
     Eq,
+    AdjRel,
     Halt,
 }
 
@@ -50,6 +51,7 @@ impl Opcode {
             6 => Ok(Opcode::JmpNot),
             7 => Ok(Opcode::Lt),
             8 => Ok(Opcode::Eq),
+            9 => Ok(Opcode::AdjRel),
             99 => Ok(Opcode::Halt),
             _ => Err(format!("unknown opcode: {}", x)),
         }
@@ -60,6 +62,7 @@ impl Opcode {
 enum Arg {
     Pos(i64),
     Imm(i64),
+    Rel(i64),
 }
 
 impl Arg {
@@ -67,6 +70,7 @@ impl Arg {
         match mode {
             0 => Ok(Arg::Pos(x)),
             1 => Ok(Arg::Imm(x)),
+            2 => Ok(Arg::Rel(x)),
             _ => Err(format!("bad param mode: {}", mode)),
         }
     }
@@ -90,6 +94,7 @@ enum Instruction {
     JmpNot(Arg, Arg),
     Lt(Arg, Arg, Arg),
     Eq(Arg, Arg, Arg),
+    AdjRel(Arg),
     Halt,
 }
 
@@ -105,6 +110,7 @@ pub struct Machine {
     state: State,
     mem: HashMap<i64, i64>,
     pc: i64,
+    rel: i64,
     instr: Option<Instruction>,
     input: i64,
     output: i64,
@@ -117,6 +123,7 @@ impl Machine {
             mem: program.to_memory(),
             instr: None,
             pc: 0,
+            rel: 0,
             input: 0,
             output: 0,
         }
@@ -135,11 +142,11 @@ impl Machine {
     }
 
     fn load(&self, arg: &Arg) -> i64 {
-        let val = match arg {
+        match arg {
             Arg::Pos(i) => self.get(*i),
             Arg::Imm(i) => *i,
-        };
-        val
+            Arg::Rel(i) => self.get(self.rel + *i),
+        }
     }
 
     pub fn set(&mut self, i: i64, x: i64) {
@@ -147,11 +154,10 @@ impl Machine {
     }
 
     fn store(&mut self, arg: &Arg, x: i64) -> Result<(), String> {
-        if let Arg::Pos(i) = arg {
-            self.set(*i, x);
-            Ok(())
-        } else {
-            Err(format!("bad mode for write: {:?}", arg))
+        match arg {
+            Arg::Pos(i) => Ok(self.set(*i, x)),
+            Arg::Imm(_) => Err(format!("bad mode for write: {:?}", arg)),
+            Arg::Rel(i) => Ok(self.set(self.rel + *i, x)),
         }
     }
 
@@ -170,6 +176,7 @@ impl Machine {
             Opcode::JmpNot => Instruction::JmpNot(args.0, args.1),
             Opcode::Lt => Instruction::Lt(args.0, args.1, args.2),
             Opcode::Eq => Instruction::Eq(args.0, args.1, args.2),
+            Opcode::AdjRel => Instruction::AdjRel(args.0),
             Opcode::Halt => Instruction::Halt,
         };
         Ok(instr)
@@ -234,6 +241,12 @@ impl Machine {
                     self.store(z, 0)?;
                 }
                 self.pc += 4;
+                self.state = State::Running;
+            }
+
+            Instruction::AdjRel(x) => {
+                self.rel += self.load(x);
+                self.pc += 2;
                 self.state = State::Running;
             }
 

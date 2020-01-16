@@ -30,6 +30,8 @@ impl Program {
 enum Opcode {
     Add,
     Mul,
+    Read,
+    Write,
     Halt,
 }
 
@@ -38,22 +40,52 @@ impl Opcode {
         match x {
             1 => Ok(Opcode::Add),
             2 => Ok(Opcode::Mul),
+            3 => Ok(Opcode::Read),
+            4 => Ok(Opcode::Write),
             99 => Ok(Opcode::Halt),
             _ => Err(format!("unknown opcode: {}", x)),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
+enum Arg {
+    Pos(i64),
+    Imm(i64),
+}
+
+impl Arg {
+    fn new(x: i64, mode: i64) -> Result<Arg, String> {
+        match mode {
+            0 => Ok(Arg::Pos(x)),
+            1 => Ok(Arg::Imm(x)),
+            _ => Err(format!("bad param mode: {}", mode)),
+        }
+    }
+
+    fn args(x: i64, y: i64, z: i64, modes: i64) -> Result<(Arg, Arg, Arg), String> {
+        Ok((
+            Arg::new(x, modes % 10)?,
+            Arg::new(y, (modes / 10) % 10)?,
+            Arg::new(z, (modes / 100) % 10)?,
+        ))
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
 enum Instruction {
-    Add(i64, i64, i64),
-    Mul(i64, i64, i64),
+    Add(Arg, Arg, Arg),
+    Mul(Arg, Arg, Arg),
+    Read(Arg),
+    Write(Arg),
     Halt,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum State {
     Running,
+    Reading,
+    Writing,
     Halted,
 }
 
@@ -61,6 +93,9 @@ pub struct Machine {
     state: State,
     mem: HashMap<i64, i64>,
     pc: i64,
+    instr: Option<Instruction>,
+    input: i64,
+    output: i64,
 }
 
 impl Machine {
@@ -68,64 +103,104 @@ impl Machine {
         Machine {
             state: State::Running,
             mem: program.to_memory(),
+            instr: None,
             pc: 0,
+            input: 0,
+            output: 0,
         }
+    }
+
+    pub fn write(&mut self, x: i64) {
+        self.input = x;
+    }
+
+    pub fn read(&self) -> i64 {
+        self.output
     }
 
     pub fn get(&self, i: i64) -> i64 {
         *self.mem.get(&i).unwrap_or(&0)
     }
 
+    fn load(&self, arg: Arg) -> i64 {
+        let val = match arg {
+            Arg::Pos(i) => self.get(i),
+            Arg::Imm(i) => i,
+        };
+        val
+    }
+
     pub fn set(&mut self, i: i64, x: i64) {
         self.mem.insert(i, x);
     }
 
+    fn store(&mut self, arg: Arg, x: i64) -> Result<(), String> {
+        if let Arg::Pos(i) = arg {
+            self.mem.insert(i, x);
+            Ok(())
+        } else {
+            Err(format!("bad mode for write: {:?}", arg))
+        }
+    }
+
     fn get_instr(&self) -> Result<Instruction, String> {
         let arg0 = self.get(self.pc + 0);
-        let arg1 = self.get(self.get(self.pc + 1));
-        let arg2 = self.get(self.get(self.pc + 2));
+        let arg1 = self.get(self.pc + 1);
+        let arg2 = self.get(self.pc + 2);
         let arg3 = self.get(self.pc + 3);
-        let instr = match Opcode::new(arg0)? {
-            Opcode::Add => Instruction::Add(arg1, arg2, arg3),
-            Opcode::Mul => Instruction::Mul(arg1, arg2, arg3),
+        let args = Arg::args(arg1, arg2, arg3, arg0 / 100)?;
+        let instr = match Opcode::new(arg0 % 100)? {
+            Opcode::Add => Instruction::Add(args.0, args.1, args.2),
+            Opcode::Mul => Instruction::Mul(args.0, args.1, args.2),
+            Opcode::Read => Instruction::Read(args.0),
+            Opcode::Write => Instruction::Write(args.0),
             Opcode::Halt => Instruction::Halt,
         };
         Ok(instr)
     }
 
-    fn exec(&mut self, instr: &Instruction) {
-        match instr {
+    fn step(&mut self) -> Result<(), String> {
+        if self.state == State::Halted {
+            return Err(format!("bad machine state: {:?}", self.state));
+        }
+        if self.state == State::Reading {
+            let instr = self.instr.ok_or("no instruction while reading")?;
+            if let Instruction::Read(x) = instr {
+                self.store(x, self.input)?;
+                self.pc += 2;
+            } else {
+                return Err(format!("non-read instruction while reading: {:?}", instr));
+            }
+        }
+        self.instr = Some(self.get_instr()?);
+        match self.instr.unwrap() {
             Instruction::Add(x, y, z) => {
-                self.set(*z, x + y);
+                self.store(z, self.load(x) + self.load(y))?;
                 self.state = State::Running;
                 self.pc += 4;
             }
             Instruction::Mul(x, y, z) => {
-                self.set(*z, x * y);
+                self.store(z, self.load(x) * self.load(y))?;
                 self.state = State::Running;
                 self.pc += 4;
+            }
+            Instruction::Read(_) => {
+                self.state = State::Reading;
+            }
+            Instruction::Write(x) => {
+                self.output = self.load(x);
+                self.state = State::Writing;
+                self.pc += 2;
             }
             Instruction::Halt => {
                 self.state = State::Halted;
             }
         }
-    }
-
-    fn check_state(&self, s: State) -> Result<(), String> {
-        if self.state != s {
-            return Err(format!("bad machine state: {:?}", self.state));
-        }
-        Ok(())
-    }
-
-    fn step(&mut self) -> Result<(), String> {
-        self.check_state(State::Running)?;
-        let instr = self.get_instr()?;
-        self.exec(&instr);
         Ok(())
     }
 
     pub fn run(&mut self) -> Result<State, String> {
+        self.step()?;
         while self.state == State::Running {
             self.step()?;
         }

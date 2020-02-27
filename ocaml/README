@@ -1,0 +1,5 @@
+to run the ocaml solutions:
+
+	ocaml dayN.ml <input_file>
+
+unless specified otherwise

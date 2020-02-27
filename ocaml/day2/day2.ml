@@ -44,16 +44,23 @@ let step vm =
   | Halt -> {vm with state=Halted}
 
 let rec run = function
-  | {state=Halted} -> print_endline "halted"
+  | {state=Halted} -> ()
   | vm -> run (step vm)
 
-let run_file path noun verb =
-  let ic = Scanf.Scanning.open_in path in
-  let vm = read_program ic |> new_vm in
+let run_program program noun verb =
+  let vm = new_vm program in
   vm.data.(1) <- noun;
   vm.data.(2) <- verb;
   run vm;
   vm.data.(0)
 
 let () =
-  run_file (getarg 1) 12 2 |> printf "%d\n"
+  let program = getarg 1 |> Scanf.Scanning.open_in |> read_program in
+  run_program program 12 2 |> printf "%d\n";
+  for noun=0 to 99 do
+    for verb=0 to 99 do
+      if run_program program noun verb = 19690720 then
+        printf "%d\n" (100 * noun + verb)
+    done
+  done
+

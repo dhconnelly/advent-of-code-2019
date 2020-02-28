@@ -5,8 +5,8 @@ include Vm
 let getarg n =
   try Sys.argv.(n) with Invalid_argument _ -> failwith "Usage: day2.ml <input_file>"
 
-let run_program program noun verb = copy program
-  |> set noun 1 |> set verb 2 |> vm_new
+let run_program program noun verb =
+  set noun 1 program |> set verb 2 |> vm_new
   |> run |> vm_data |> get 0
 
 let run path =

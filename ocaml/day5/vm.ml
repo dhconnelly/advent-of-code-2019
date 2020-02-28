@@ -31,7 +31,7 @@ type vm = {
   state: state;
 }
 
-let vm_new data = {pc=0; data; state=Running}
+let vm_new data = {pc=0; data=copy data; state=Running}
 let vm_data vm = vm.data
 let ld pos data = get (get pos data) data
 let store pos x data = set x (get pos data) data

@@ -1,6 +1,6 @@
 type data
 val read : Scanf.Scanning.in_channel -> data
-val set  : int -> int -> data -> unit
+val set  : int -> int -> data -> data
 val get  : int -> data -> int
 
 type state = Running | Halted | Input | Output

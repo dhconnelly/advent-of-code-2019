@@ -1,35 +1,34 @@
-open Hashtbl
-type data = (int, int) t
-let empty = create 0
-let set x pos data = replace data pos x
-let get pos data = match find_opt data pos with
+module IntMap = Map.Make(Int)
+type data = int IntMap.t
+let empty = IntMap.empty
+let set x pos data = IntMap.add pos x data
+let get pos data = match IntMap.find_opt pos data with
 | None -> 0
 | Some x -> x
 
 let read ic =
   let next_instr () =
-    try Some (Scanf.bscanf ic "%d%c" (fun i _ -> i))
-    with End_of_file -> None
+    try Some (Scanf.bscanf ic "%d%c" (fun i _ -> i)) with End_of_file -> None
   in let rec read_rec () = match next_instr () with
   | None -> []
   | Some instr -> instr::read_rec ()
-  in read_rec () |> List.mapi (fun i x -> i,x) |> List.to_seq |> of_seq
+  in read_rec () |> List.mapi (fun i x -> i,x) |> List.to_seq |> IntMap.of_seq
 
 type opcode =
   Add | Mul | Read | Write | JmpIf | JmpNot | Lt | Eq | Halt | AdjRel
 type mode = Pos | Imm | Rel
 type instruction = { op: opcode; modes: mode*mode*mode }
 
-let parse_mode = function
+let mode_of = function
   | 0 -> Pos
   | 1 -> Imm
   | 2 -> Rel
   | n -> failwith (Printf.sprintf "invalid mode: %d" n)
 
 let modes_of x =
-  let x = x / 100 in
-  let (m1,m2,m3) = (x mod 10), (x/10 mod 10), (x/100 mod 10) in
-  (parse_mode m1), (parse_mode m2), (parse_mode m3)
+  let x = x/100 in
+  let (a,b,c) = (x mod 10), (x/10 mod 10), (x/100 mod 10) in
+  (mode_of a), (mode_of b), (mode_of c)
 
 let decode x =
   let modes = modes_of x in
@@ -58,23 +57,22 @@ type vm = {
 }
 
 let vm_empty = {pc=0; data=empty; input=0; output=0; state=Halted; rel=0}
-let vm_new data = {vm_empty with data=copy data; state=Running}
+let vm_new data = {vm_empty with data=data; state=Running}
 let vm_data vm = vm.data
 let vm_state vm = vm.state
 let vm_read vm = vm.output
 let vm_write x vm = {vm with input=x}
+let vm_incr n vm = {vm with pc=vm.pc+n}
 
 let ld x md vm = match md with
   | Pos -> get x vm.data
   | Imm -> x
   | Rel -> get (vm.rel+x) vm.data
 
-let store y x md vm = match md with
-  | Pos -> set y x vm.data; vm
+let store a pos md vm = match md with
+  | Pos -> {vm with data=set a pos vm.data}
   | Imm -> failwith "invalid store in immediate mode"
-  | Rel -> set y (vm.rel+x) vm.data; vm
-
-let incr n vm = {vm with pc=vm.pc+n}
+  | Rel -> {vm with data=set a (vm.rel+pos) vm.data}
 
 let rec step ({pc; data; state} as vm) =
   let {op; modes=m1,m2,m3} = get pc data |> decode in
@@ -84,14 +82,14 @@ let rec step ({pc; data; state} as vm) =
     let vm = store vm.input a m1 vm in
     step {vm with pc=pc+2; state=Running}
   else match op with
-    | Add -> store (x+y) c m3 vm |> incr 4
-    | Mul -> store (x*y) c m3 vm |> incr 4
+    | Add -> store (x+y) c m3 vm |> vm_incr 4
+    | Mul -> store (x*y) c m3 vm |> vm_incr 4
     | Read -> {vm with state=Input}
     | Write -> {vm with pc=pc+2; output=x; state=Output}
     | JmpIf -> {vm with pc=if x<>0 then y else pc+3}
     | JmpNot -> {vm with pc=if x=0 then y else pc+3}
-    | Lt -> store (if x<y then 1 else 0) c m3 vm |> incr 4
-    | Eq -> store (if x=y then 1 else 0) c m3 vm |> incr 4
+    | Lt -> store (if x<y then 1 else 0) c m3 vm |> vm_incr 4
+    | Eq -> store (if x=y then 1 else 0) c m3 vm |> vm_incr 4
     | AdjRel -> {vm with pc=pc+2; rel=vm.rel+x}
     | Halt -> {vm with pc=pc+1; state=Halted}
 

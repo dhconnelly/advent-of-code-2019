@@ -31,19 +31,19 @@ let modes_of x =
   (mode_of a), (mode_of b), (mode_of c)
 
 let decode x =
-  let modes = modes_of x in
-  match x mod 100 with
-  | 1  -> {op=Add; modes}
-  | 2  -> {op=Mul; modes}
-  | 3  -> {op=Read; modes}
-  | 4  -> {op=Write; modes}
-  | 5  -> {op=JmpIf; modes}
-  | 6  -> {op=JmpNot; modes}
-  | 7  -> {op=Lt; modes}
-  | 8  -> {op=Eq; modes}
-  | 9  -> {op=AdjRel; modes}
-  | 99 -> {op=Halt; modes}
+  let op = match x mod 100 with
+  | 1  -> Add
+  | 2  -> Mul
+  | 3  -> Read
+  | 4  -> Write
+  | 5  -> JmpIf
+  | 6  -> JmpNot
+  | 7  -> Lt
+  | 8  -> Eq
+  | 9  -> AdjRel
+  | 99 -> Halt
   | o -> failwith (Printf.sprintf "invalid opcode: %d" o)
+  in {op; modes=modes_of x}
 
 type state = Running | Halted | Input | Output
 

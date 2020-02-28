@@ -22,7 +22,8 @@ let read ic =
   |> List.mapi (fun i x -> i, x)
   |> List.to_seq |> of_seq
 
-type opcode = Add | Mul | Read | Write | Halt
+type opcode = Add | Mul | Read | Write
+            | JmpIf | JmpNot | Lt | Eq | Halt
 type mode = Pos | Imm
 type state = Running | Halted | Input | Output
 
@@ -46,10 +47,14 @@ let modes_of x =
 let decode x =
   let modes = modes_of x in
   match op_of x with
-  | 1 -> {op=Add; modes}
-  | 2 -> {op=Mul; modes}
-  | 3 -> {op=Read; modes}
-  | 4 -> {op=Write; modes}
+  | 1  -> {op=Add; modes}
+  | 2  -> {op=Mul; modes}
+  | 3  -> {op=Read; modes}
+  | 4  -> {op=Write; modes}
+  | 5  -> {op=JmpIf; modes}
+  | 6  -> {op=JmpNot; modes}
+  | 7  -> {op=Lt; modes}
+  | 8  -> {op=Eq; modes}
   | 99 -> {op=Halt; modes}
   | o -> failwith (sprintf "invalid opcode: %d" o)
 
@@ -72,22 +77,25 @@ let ld x md data = match md with
   | Imm -> x
 
 let store y x md vm = match md with
-  | Pos -> set y x vm.data; vm
+  | Pos -> set y x vm.data
   | Imm -> failwith "invalid store in immediate mode"
 
 let rec step ({pc; data; state} as vm) =
-  let instr = get pc data in
-  let {op; modes=(m1, m2, m3)} = decode instr in
+  let {op; modes=(m1, m2, m3)} = get pc data |> decode in
   let (p1, p2, p3) = (get (pc+1) data), (get (pc+2) data), (get (pc+3) data) in
   let (a, b) = (ld p1 m1 data), (ld p2 m2 data) in
-  if state = Input then
-    let vm = store vm.input p1 m1 vm in
+  if state = Input then (
+    store vm.input p1 m1 vm;
     step {vm with pc=pc+2; state=Running}
-  else match op with
-    | Add -> let vm = store (a + b) p3 m3 vm in {vm with pc=pc+4}
-    | Mul -> let vm = store (a * b) p3 m3 vm in {vm with pc=pc+4}
+  ) else match op with
+    | Add -> store (a + b) p3 m3 vm; {vm with pc=pc+4}
+    | Mul -> store (a * b) p3 m3 vm; {vm with pc=pc+4}
     | Read -> {vm with state=Input}
     | Write -> {vm with pc=pc+2; output=a; state=Output}
+    | JmpIf -> {vm with pc=if a<>0 then b else pc+3}
+    | JmpNot -> {vm with pc=if a=0 then b else pc+3}
+    | Lt -> store (if a < b then 1 else 0) p3 m3 vm; {vm with pc=pc+4}
+    | Eq -> store (if a = b then 1 else 0) p3 m3 vm; {vm with pc=pc+4}
     | Halt -> {vm with pc=pc+1; state=Halted}
 
 let rec run vm =

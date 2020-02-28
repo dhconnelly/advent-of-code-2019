@@ -17,6 +17,7 @@ let run_program program arg =
 
 let run path =
   let data = Scanf.Scanning.open_in path |> read in
-  run_program data 1 |> printf "%d\n" 
+  run_program data 1 |> printf "%d\n";
+  run_program data 5 |> printf "%d\n" 
 
 let () = getarg 1 |> run |> ignore

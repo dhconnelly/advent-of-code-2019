@@ -1,52 +1,37 @@
-open Printf
-open Hashtbl
-
 type data = (int, int) Hashtbl.t
-
-let get pos data = match find_opt data pos with
+let copy = Hashtbl.copy
+let set x pos data = Hashtbl.replace data pos x
+let get pos data = match Hashtbl.find_opt data pos with
 | None -> 0
 | Some x -> x
-
-let set x pos data = replace data pos x
-
-let copy = Hashtbl.copy
 
 let read ic =
   let next_instr () =
     try Some (Scanf.bscanf ic "%d%c" (fun i _ -> i))
     with End_of_file -> None
-  in let rec read_acc acc = match next_instr () with
-  | None -> acc
-  | Some instr -> read_acc (instr::acc)
-  in read_acc [] |> List.rev
-  |> List.mapi (fun i x -> i, x)
-  |> List.to_seq |> of_seq
+  in let rec read_rec () = match next_instr () with
+  | None -> []
+  | Some instr -> instr::read_rec ()
+  in read_rec () |> List.mapi (fun i x -> i, x)
+  |> List.to_seq |> Hashtbl.of_seq
 
-type opcode = Add | Mul | Read | Write
-            | JmpIf | JmpNot | Lt | Eq | Halt
+type opcode = Add | Mul | Read | Write | JmpIf | JmpNot | Lt | Eq | Halt
 type mode = Pos | Imm
-type state = Running | Halted | Input | Output
-
-type instruction = {
-  op: opcode;
-  modes: mode*mode*mode;
-}
-
-let op_of x = x mod 100
+type instruction = { op: opcode; modes: mode*mode*mode }
 
 let parse_mode = function
   | 0 -> Pos
   | 1 -> Imm
-  | n -> failwith (sprintf "invalid mode: %d" n)
+  | n -> failwith (Printf.sprintf "invalid mode: %d" n)
 
 let modes_of x =
   let x = x / 100 in
   let (m1,m2,m3) = (x mod 10), (x/10 mod 10), (x/100 mod 10) in
- (parse_mode m1), (parse_mode m2), (parse_mode m3)
+  (parse_mode m1), (parse_mode m2), (parse_mode m3)
 
 let decode x =
   let modes = modes_of x in
-  match op_of x with
+  match x mod 100 with
   | 1  -> {op=Add; modes}
   | 2  -> {op=Mul; modes}
   | 3  -> {op=Read; modes}
@@ -56,7 +41,9 @@ let decode x =
   | 7  -> {op=Lt; modes}
   | 8  -> {op=Eq; modes}
   | 99 -> {op=Halt; modes}
-  | o -> failwith (sprintf "invalid opcode: %d" o)
+  | o -> failwith (Printf.sprintf "invalid opcode: %d" o)
+
+type state = Running | Halted | Input | Output
 
 type vm = {
   pc: int;
@@ -81,24 +68,23 @@ let store y x md vm = match md with
   | Imm -> failwith "invalid store in immediate mode"
 
 let rec step ({pc; data; state} as vm) =
-  let {op; modes=(m1, m2, m3)} = get pc data |> decode in
-  let (p1, p2, p3) = (get (pc+1) data), (get (pc+2) data), (get (pc+3) data) in
-  let (a, b) = (ld p1 m1 data), (ld p2 m2 data) in
+  let {op; modes=m1,m2,m3} = get pc data |> decode in
+  let (a,b,c) = (get (pc+1) data), (get (pc+2) data), (get (pc+3) data) in
+  let (x,y) = (ld a m1 data), (ld b m2 data) in
   if state = Input then (
-    store vm.input p1 m1 vm;
+    store vm.input a m1 vm;
     step {vm with pc=pc+2; state=Running}
   ) else match op with
-    | Add -> store (a + b) p3 m3 vm; {vm with pc=pc+4}
-    | Mul -> store (a * b) p3 m3 vm; {vm with pc=pc+4}
+    | Add -> store (x+y) c m3 vm; {vm with pc=pc+4}
+    | Mul -> store (x*y) c m3 vm; {vm with pc=pc+4}
     | Read -> {vm with state=Input}
-    | Write -> {vm with pc=pc+2; output=a; state=Output}
-    | JmpIf -> {vm with pc=if a<>0 then b else pc+3}
-    | JmpNot -> {vm with pc=if a=0 then b else pc+3}
-    | Lt -> store (if a < b then 1 else 0) p3 m3 vm; {vm with pc=pc+4}
-    | Eq -> store (if a = b then 1 else 0) p3 m3 vm; {vm with pc=pc+4}
+    | Write -> {vm with pc=pc+2; output=x; state=Output}
+    | JmpIf -> {vm with pc=if x<>0 then y else pc+3}
+    | JmpNot -> {vm with pc=if x=0 then y else pc+3}
+    | Lt -> store (if x<y then 1 else 0) c m3 vm; {vm with pc=pc+4}
+    | Eq -> store (if x=y then 1 else 0) c m3 vm; {vm with pc=pc+4}
     | Halt -> {vm with pc=pc+1; state=Halted}
 
-let rec run vm =
-  let vm = step vm in match vm with
-  | {state=Running} -> run vm
-  | _ -> vm
+let rec run vm = match step vm with
+  | {state=Running} as vm' -> run vm'
+  | vm' -> vm'

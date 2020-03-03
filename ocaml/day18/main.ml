@@ -34,6 +34,8 @@ let is_door_or_key = function
 let char_of = function
   | Door ch | Key ch -> ch
   | _ -> failwith "not a char tile"
+let key_of = Char.lowercase_ascii
+let door_of = Char.uppercase_ascii
 
 (* grid *)
 
@@ -89,6 +91,7 @@ let bfs pt g =
 
 let dists g (pt, tile) = match tile with
   | Key ch | Door ch -> Some (ch, bfs pt g)
+  | Entrance -> Some ('@', bfs pt g)
   | _ -> None
 
 let all_dists g =
@@ -101,6 +104,34 @@ let print_dists d =
 
 let print_all_dists d =
   CharMap.iter (fun ch d -> printf "from %c:\n" ch; print_dists d) d
+
+(* updating dist map *)
+
+let prod xs ys =
+  let pair ys x = List.fold_left (fun zs y -> (x,y)::zs) [] ys in
+  List.map (pair ys) xs |> List.concat
+
+let connect d ((chl, dl), (chr, dr)) =
+  if chl = chr then d
+  else if CharMap.mem chr (CharMap.find chl d) then d
+  else (
+    let dlr = dl + dr in
+    let froml, fromr = CharMap.find chl d, CharMap.find chr d in
+    let froml, fromr = CharMap.add chr dlr froml, CharMap.add chl dlr fromr in
+    CharMap.add chl froml d |> CharMap.add chr fromr)
+
+let connect_across ch d =
+  if not (CharMap.mem ch d) then d else
+  let nbrs = CharMap.find ch d |> CharMap.to_seq |> List.of_seq in
+  let pairs = prod nbrs nbrs in
+  List.fold_left connect d pairs
+
+let remove ch d =
+  CharMap.remove ch d |> CharMap.map (fun d -> CharMap.remove ch d)
+
+let take_key key d =
+  let door = door_of key in
+  connect_across key d |> connect_across door |> remove key |> remove door
 
 (* bit vector for keys *)
 
@@ -125,10 +156,5 @@ let () =
   print_grid g;
   let d = all_dists g in
   print_all_dists d;
-  let keys = ['k'; 'c'; 'a'] in
-  printf "%s\n" (List.to_seq keys |> String.of_seq);
-  printf "%d\n" (to_bitset keys);
-  printf "%s\n" (to_bitset keys |> of_bitset |> List.to_seq |> String.of_seq);
-  printf "%d\n" (to_bitset keys |> of_bitset |> to_bitset);
-  printf "%s\n" (to_bitset keys |> of_bitset |> to_bitset |> of_bitset |> List.to_seq |> String.of_seq)
+  take_key 'a' d |> print_all_dists
 

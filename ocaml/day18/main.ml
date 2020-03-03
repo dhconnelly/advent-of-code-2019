@@ -5,6 +5,7 @@ module PtSet = Set.Make(Pt2)
 module CharMap = Map.Make(Char)
 
 (* tiles *)
+
 type tile = Wall | Entrance | Passage | Door of char | Key of char
 
 let parse_tile row col c =
@@ -35,7 +36,9 @@ let char_of = function
   | _ -> failwith "not a char tile"
 
 (* grid *)
+
 type grid = tile PtMap.t
+
 let add_point g (pt, tile) = PtMap.add pt tile g
 
 let read_grid ic =
@@ -57,28 +60,22 @@ let print_grid g =
   done
 
 (* bfs *)
-type dist_map = int CharMap.t
-
-let print_dists d =
-  CharMap.iter (fun ch dist -> printf "%c -> %d\n" ch dist) d
 
 type bfs_node = {pt: Pt2.t; tile: tile; dist: int}
-
-let node_of pt dist g = {pt; tile=PtMap.find pt g; dist}
 
 let bfs_nbrs pt g v dist =
   let nbrs = Pt2.nbrs pt |> List.filter (fun pt -> PtMap.mem pt g) in
   let to_visit = List.filter (fun pt -> PtSet.mem pt v |> not) nbrs in
-  let nodes = List.map (fun pt -> node_of pt dist g) to_visit in
+  let nodes = List.map (fun pt -> {pt; tile=PtMap.find pt g; dist}) to_visit in
   List.filter (fun {tile} -> tile <> Wall) nodes
 
+let enq q nbr = if is_passable nbr.tile then Queue.add nbr q
 let mark_visited v {pt} = PtSet.add pt v
-
 let update_dists d {pt; tile; dist} =
   if is_door_or_key tile then CharMap.add (char_of tile) dist d else d
 
-let bfs pt g : dist_map =
-  let q = Queue.create () in Queue.add (node_of pt 0 g) q;
+let bfs pt g =
+  let q = Queue.create () in Queue.add {pt; tile=PtMap.find pt g; dist=0} q;
   let rec loop v d = match Queue.take_opt q with
     | None -> d
     | Some nd -> visit v d nd
@@ -86,13 +83,30 @@ let bfs pt g : dist_map =
     let nbrs = bfs_nbrs pt g v (dist+1) in
     let v = List.fold_left mark_visited v nbrs in
     let d = List.fold_left update_dists d nbrs in
-    List.iter (fun nd -> if is_passable nd.tile then Queue.add nd q) nbrs;
+    List.iter (enq q) nbrs;
     loop v d in
   loop (PtSet.add pt PtSet.empty) CharMap.empty
 
+let dists g (pt, tile) = match tile with
+  | Key ch | Door ch -> Some (ch, bfs pt g)
+  | _ -> None
+
+let all_dists g =
+  let pairs = PtMap.to_seq g |> List.of_seq in
+  let all_dists = List.filter_map (dists g) pairs in
+  List.to_seq all_dists |> CharMap.of_seq
+
+let print_dists d =
+  CharMap.iter (fun ch dist -> printf "%c -> %d\n" ch dist) d
+
+let print_all_dists d =
+  CharMap.iter (fun ch d -> printf "from %c:\n" ch; print_dists d) d
+
 (* main *)
+
 let () =
   let g = open_in Sys.argv.(1) |> read_grid in
   print_grid g;
-  print_dists (bfs (8,4) g)
+  let d = all_dists g in
+  print_all_dists d
 

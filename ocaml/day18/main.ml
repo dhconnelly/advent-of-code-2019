@@ -131,7 +131,9 @@ let remove ch d =
 
 let take_key key d =
   let door = door_of key in
-  connect_across key d |> connect_across door |> remove key |> remove door
+  let d = connect_across key d |> connect_across door in
+  let nbrs = CharMap.find key d in
+  nbrs, (remove key d |> remove door)
 
 (* bit vector for keys *)
 
@@ -142,6 +144,9 @@ let to_bitset keys =
   let codes = List.map to_index keys in
   List.fold_left (fun b n -> Int.logor b (Int.shift_left 1 n)) 0 codes
 
+let bitset_remove b key =
+  to_index key |> Int.shift_left 1 |> Int.lognot |> Int.logand b
+
 let of_bitset b =
   let rec loop acc n =
     if n < 0 then acc
@@ -149,12 +154,39 @@ let of_bitset b =
     else loop acc (n-1) in
   loop [] (to_index 'z')
 
+(* shortest path *)
+
+let is_key_nbr (ch, _) = ch >= 'a' && ch <= 'z'
+
+type memo_key = {from: char; need: int}
+
+let rec shortest_path from need d memo =
+  let mk = {from; need} in
+  match Hashtbl.find_opt memo mk with
+  | Some dist -> dist
+  | None ->
+      let nbrs, d = take_key from d in
+      let nbrs = CharMap.to_seq nbrs |> List.of_seq in
+      let nbr_keys = List.filter is_key_nbr nbrs in
+      if List.length nbr_keys = 0 then 0
+      else (
+        let dists = List.map (shortest_path_taking need d memo) nbr_keys in
+        let min_dist = List.fold_left min Int.max_int dists in
+        Hashtbl.replace memo mk min_dist;
+        min_dist)
+and shortest_path_taking need d memo (ch, dist) =
+  let new_need = bitset_remove need ch in
+  dist + (shortest_path ch new_need d memo)
+
 (* main *)
+
+let keys m =
+  CharMap.to_seq m |> List.of_seq |> List.filter is_key_nbr |>
+  List.map (fun (ch, _) -> ch)
 
 let () =
   let g = open_in Sys.argv.(1) |> read_grid in
-  print_grid g;
   let d = all_dists g in
-  print_all_dists d;
-  take_key 'a' d |> print_all_dists
+  let memo = Hashtbl.create 26 in
+  printf "%d\n" (shortest_path '@' (keys d |> to_bitset) d memo)
 

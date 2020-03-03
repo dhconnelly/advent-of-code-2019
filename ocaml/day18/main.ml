@@ -102,11 +102,33 @@ let print_dists d =
 let print_all_dists d =
   CharMap.iter (fun ch d -> printf "from %c:\n" ch; print_dists d) d
 
+(* bit vector for keys *)
+
+let to_index key = Char.code key - Char.code 'a'
+let from_index ix = ix + Char.code 'a' |> Char.chr
+
+let to_bitset keys =
+  let codes = List.map to_index keys in
+  List.fold_left (fun b n -> Int.logor b (Int.shift_left 1 n)) 0 codes
+
+let of_bitset b =
+  let rec loop acc n =
+    if n < 0 then acc
+    else if Int.logand (Int.shift_left 1 n) b > 0 then loop ((from_index n)::acc) (n-1)
+    else loop acc (n-1) in
+  loop [] (to_index 'z')
+
 (* main *)
 
 let () =
   let g = open_in Sys.argv.(1) |> read_grid in
   print_grid g;
   let d = all_dists g in
-  print_all_dists d
+  print_all_dists d;
+  let keys = ['k'; 'c'; 'a'] in
+  printf "%s\n" (List.to_seq keys |> String.of_seq);
+  printf "%d\n" (to_bitset keys);
+  printf "%s\n" (to_bitset keys |> of_bitset |> List.to_seq |> String.of_seq);
+  printf "%d\n" (to_bitset keys |> of_bitset |> to_bitset);
+  printf "%s\n" (to_bitset keys |> of_bitset |> to_bitset |> of_bitset |> List.to_seq |> String.of_seq)
 

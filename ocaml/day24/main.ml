@@ -1,6 +1,7 @@
 open Printf
 open Pt2
 module PtMap = Map.Make(Pt2)
+module IntSet = Set.Make(Int)
 
 type state = Alive | Dead
 type grid = {m: state PtMap.t; rows: int; cols: int}
@@ -51,12 +52,23 @@ let unpack (x: int) (rows: int) (cols: int): grid =
       loop row col m in
   {m=(loop 0 0 PtMap.empty); rows; cols}
 
+let iterate (g: grid): grid =
+  let is_alive pt = PtMap.find_opt pt g.m = Some Alive in
+  let alive_nbrs pt = Pt2.nbrs pt |> List.filter is_alive |> List.length in
+  let iter pt cur = match cur, alive_nbrs pt with
+    | Alive, 1 -> Alive
+    | Alive, _ -> Dead
+    | Dead, (1 | 2) -> Alive
+    | Dead, _ -> Dead in
+  {g with m=(PtMap.mapi iter g.m)}
+
+let find_repeat (g: grid): int =
+  let rec loop g seen =
+    let b = pack g in
+    if IntSet.mem b seen then b
+    else loop (iterate g) (IntSet.add b seen) in
+  loop g IntSet.empty
+
 let () =
   let g = open_in Sys.argv.(1) |> read_grid in
-  print_grid g;
-  let b = pack g in
-  printf "%d\n" b;
-  let g = unpack b g.rows g.cols in
-  print_grid g;
-  let b = pack g in
-  printf "%d\n" b
+  find_repeat g |> printf "%d\n"

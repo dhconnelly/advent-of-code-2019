@@ -52,21 +52,23 @@ let unpack (x: int) (rows: int) (cols: int): grid =
       loop row col m in
   {m=(loop 0 0 PtMap.empty); rows; cols}
 
-let iterate (g: grid): grid =
-  let is_alive pt = PtMap.find_opt pt g.m = Some Alive in
-  let alive_nbrs pt = Pt2.nbrs pt |> List.filter is_alive |> List.length in
+let iterate nbrs lookup mapi m =
+  let is_alive pt = lookup pt m = Some Alive in
+  let alive_nbrs pt = nbrs pt |> List.filter is_alive |> List.length in
   let iter pt cur = match cur, alive_nbrs pt with
-    | Alive, 1 -> Alive
-    | Alive, _ -> Dead
-    | Dead, (1 | 2) -> Alive
-    | Dead, _ -> Dead in
-  {g with m=(PtMap.mapi iter g.m)}
+  | Alive, 1 -> Alive
+  | Alive, _ -> Dead
+  | Dead, (1 | 2) -> Alive
+  | Dead, _ -> Dead in
+  mapi iter m
+
+let iterate_flat = iterate Pt2.nbrs PtMap.find_opt PtMap.mapi
 
 let find_repeat (g: grid): int =
   let rec loop g seen =
     let b = pack g in
     if IntSet.mem b seen then b
-    else loop (iterate g) (IntSet.add b seen) in
+    else loop {g with m=iterate_flat g.m} (IntSet.add b seen) in
   loop g IntSet.empty
 
 (* assume rows=5 and cols=5 for simplicity in part 2 *)
@@ -112,13 +114,8 @@ let print_rec_nbrs g rp =
   printf "nbrs of %s at level %d:\n" (Pt2.fmt rp.pt) rp.d;
   rec_nbrs rp |> List.iter (fun rp -> RecPt.fmt rp |> printf "%s\n")
 
+let iterate_rec = iterate rec_nbrs RecPtMap.find_opt RecPtMap.mapi
+
 let () =
   let g = open_in Sys.argv.(1) |> read_grid in
-  find_repeat g |> printf "%d\n";
-  let g = rec_grid_of g in
-  print_rec_nbrs g {pt=(3, 3); d=1};
-  print_rec_nbrs g {pt=(1, 1); d=0};
-  print_rec_nbrs g {pt=(3, 0); d=0};
-  print_rec_nbrs g {pt=(4, 0); d=0};
-  print_rec_nbrs g {pt=(3, 2); d=1};
-  print_rec_nbrs g {pt=(3, 2); d=0}
+  find_repeat g |> printf "%d\n"

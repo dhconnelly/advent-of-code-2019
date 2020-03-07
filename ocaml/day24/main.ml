@@ -76,23 +76,36 @@ module RecPt = struct
   let fmt {pt; d} = sprintf "(%s at %d)" (Pt2.fmt pt) d
 end
 
-module RecPtMap = Map.Make(RecPt)
+(* assume rows=5 and cols=5 for simplicity in part 2 *)
 
-type rec_grid = {m: state RecPtMap.t; rows: int; cols: int}
+module RecPtMap = Map.Make(RecPt)
+type rec_grid = state RecPtMap.t
 
 let rec_grid_of ({m; rows; cols}: grid): rec_grid =
-  let f (pt,st): RecPt.t * state = {pt; d=0}, st in
-  {m=PtMap.to_seq m |> Seq.map f |> RecPtMap.of_seq; rows; cols}
+  let to_rec_pt (pt,st): RecPt.t * state = {pt; d=0}, st in
+  PtMap.to_seq m |> Seq.map to_rec_pt |> RecPtMap.of_seq
 
-let mid_row g = g.rows / 2
-let mid_col g = g.cols / 2
-
-let rec_nbrs (g: rec_grid) ({pt; d}: RecPt.t): RecPt.t list =
-  let expand (col, row) = [] in
-  Pt2.nbrs pt |> List.concat_map expand
+let rec_nbrs ({pt=(col, row); d}: RecPt.t): RecPt.t list =
+  let left = match col, row with
+  | 3, 2 -> []
+  | 0, row -> []
+  | col, row -> [] in
+  let right = match col, row with
+  | 1, 2 -> []
+  | 4, row -> []
+  | col, row -> [] in
+  let up = match col, row with
+  | col, 0 -> []
+  | 2, 3 -> []
+  | col, row -> [] in
+  let down = match col, row with
+  | 2, 1 -> []
+  | col, 4 -> []
+  | col, row -> [] in
+  left @ right @ up @ down
 
 let print_rec_nbrs g rp =
-  rec_nbrs g rp |> List.iter (fun rp -> RecPt.fmt rp |> printf "%s\n")
+  rec_nbrs rp |> List.iter (fun rp -> RecPt.fmt rp |> printf "%s\n")
 
 let () =
   let g = open_in Sys.argv.(1) |> read_grid in

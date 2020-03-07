@@ -69,15 +69,15 @@ let find_repeat (g: grid): int =
     else loop (iterate g) (IntSet.add b seen) in
   loop g IntSet.empty
 
+(* assume rows=5 and cols=5 for simplicity in part 2 *)
+
+type rec_pt = {pt: Pt2.t; d: int}
 module RecPt = struct
-  type t = {pt: Pt2.t; d: int}
+  type t = rec_pt
   let compare {pt=p1; d=d1} {pt=p2; d=d2} =
     if d1 <> d2 then Int.compare d1 d2 else Pt2.compare p1 p2
   let fmt {pt; d} = sprintf "(%s at %d)" (Pt2.fmt pt) d
 end
-
-(* assume rows=5 and cols=5 for simplicity in part 2 *)
-
 module RecPtMap = Map.Make(RecPt)
 type rec_grid = state RecPtMap.t
 
@@ -85,26 +85,31 @@ let rec_grid_of ({m; rows; cols}: grid): rec_grid =
   let to_rec_pt (pt,st): RecPt.t * state = {pt; d=0}, st in
   PtMap.to_seq m |> Seq.map to_rec_pt |> RecPtMap.of_seq
 
+let rec range lo hi =
+  if lo = hi then [] else lo::range (lo+1) hi
+let r = range 0 5
+
 let rec_nbrs ({pt=(col, row); d}: RecPt.t): RecPt.t list =
   let left = match col, row with
-  | 3, 2 -> []
-  | 0, row -> []
-  | col, row -> [] in
+  | 3, 2 -> List.map (fun row -> {pt=(4, row); d=d+1}) r
+  | 0, row -> [{pt=(1, 2); d=d-1}]
+  | col, row -> [{pt=(col-1, row); d}] in
   let right = match col, row with
-  | 1, 2 -> []
-  | 4, row -> []
-  | col, row -> [] in
+  | 1, 2 -> List.map (fun row -> {pt=(0, row); d=d+1}) r
+  | 4, row -> [{pt=(3, 2); d=d-1}]
+  | col, row -> [{pt=(col+1, row); d}] in
   let up = match col, row with
-  | col, 0 -> []
-  | 2, 3 -> []
-  | col, row -> [] in
+  | col, 0 -> [{pt=(2, 1); d=d-1}]
+  | 2, 3 -> List.map (fun col -> {pt=(col, 4); d=d+1}) r
+  | col, row -> [{pt=(col, row-1); d}] in
   let down = match col, row with
-  | 2, 1 -> []
-  | col, 4 -> []
-  | col, row -> [] in
+  | 2, 1 -> List.map (fun col -> {pt=(col, 0); d=d+1}) r
+  | col, 4 -> [{pt=(2, 3); d=d-1}]
+  | col, row -> [{pt=(col, row+1); d}] in
   left @ right @ up @ down
 
 let print_rec_nbrs g rp =
+  printf "nbrs of %s at level %d:\n" (Pt2.fmt rp.pt) rp.d;
   rec_nbrs rp |> List.iter (fun rp -> RecPt.fmt rp |> printf "%s\n")
 
 let () =

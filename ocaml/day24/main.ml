@@ -69,6 +69,38 @@ let find_repeat (g: grid): int =
     else loop (iterate g) (IntSet.add b seen) in
   loop g IntSet.empty
 
+module RecPt = struct
+  type t = {pt: Pt2.t; d: int}
+  let compare {pt=p1; d=d1} {pt=p2; d=d2} =
+    if d1 <> d2 then Int.compare d1 d2 else Pt2.compare p1 p2
+  let fmt {pt; d} = sprintf "(%s at %d)" (Pt2.fmt pt) d
+end
+
+module RecPtMap = Map.Make(RecPt)
+
+type rec_grid = {m: state RecPtMap.t; rows: int; cols: int}
+
+let rec_grid_of ({m; rows; cols}: grid): rec_grid =
+  let f (pt,st): RecPt.t * state = {pt; d=0}, st in
+  {m=PtMap.to_seq m |> Seq.map f |> RecPtMap.of_seq; rows; cols}
+
+let mid_row g = g.rows / 2
+let mid_col g = g.cols / 2
+
+let rec_nbrs (g: rec_grid) ({pt; d}: RecPt.t): RecPt.t list =
+  let expand (col, row) = [] in
+  Pt2.nbrs pt |> List.concat_map expand
+
+let print_rec_nbrs g rp =
+  rec_nbrs g rp |> List.iter (fun rp -> RecPt.fmt rp |> printf "%s\n")
+
 let () =
   let g = open_in Sys.argv.(1) |> read_grid in
-  find_repeat g |> printf "%d\n"
+  find_repeat g |> printf "%d\n";
+  let g = rec_grid_of g in
+  print_rec_nbrs g {pt=(3, 3); d=1};
+  print_rec_nbrs g {pt=(1, 1); d=0};
+  print_rec_nbrs g {pt=(3, 0); d=0};
+  print_rec_nbrs g {pt=(4, 0); d=0};
+  print_rec_nbrs g {pt=(3, 2); d=1};
+  print_rec_nbrs g {pt=(3, 2); d=0}

@@ -84,6 +84,7 @@ module RecPtMap = Map.Make(RecPt)
 type rec_grid = state RecPtMap.t
 
 let rec_grid_of ({m; rows; cols}: grid): rec_grid =
+  let m = PtMap.remove (2,2) m in
   let to_rec_pt (pt,st): RecPt.t * state = {pt; d=0}, st in
   PtMap.to_seq m |> Seq.map to_rec_pt |> RecPtMap.of_seq
 

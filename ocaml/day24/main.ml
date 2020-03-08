@@ -114,8 +114,24 @@ let print_rec_nbrs g rp =
   printf "nbrs of %s at level %d:\n" (Pt2.fmt rp.pt) rp.d;
   rec_nbrs rp |> List.iter (fun rp -> RecPt.fmt rp |> printf "%s\n")
 
-let iterate_rec = iterate rec_nbrs RecPtMap.find_opt RecPtMap.mapi
+let iterate_rec =
+  iterate rec_nbrs RecPtMap.find_opt RecPtMap.mapi
+
+let add_nbrs (rp: rec_pt) _ (g: rec_grid): rec_grid =
+  let add_nbr g nbr =
+    if RecPtMap.mem nbr g then g else RecPtMap.add nbr Dead g in
+  rec_nbrs rp |> List.fold_left add_nbr g
+
+let step g =
+  RecPtMap.fold add_nbrs g g |> iterate_rec
+
+let rec steps n g =
+  if n = 0 then g else steps (n-1) (step g)
+
+let count_bugs (g: rec_grid): int =
+  RecPtMap.fold (fun _ st n -> if st = Alive then n+1 else n) g 0
 
 let () =
   let g = open_in Sys.argv.(1) |> read_grid in
-  find_repeat g |> printf "%d\n"
+  find_repeat g |> printf "%d\n";
+  rec_grid_of g |> steps 200 |> count_bugs |> printf "%d\n"

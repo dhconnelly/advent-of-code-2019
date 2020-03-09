@@ -18,13 +18,6 @@ let parse_tile row col c =
   | c -> failwith (sprintf "bad tile: %c" c) in
   (col, row), tile
 
-let print_tile = function
-  | Wall -> '#'
-  | Entrance -> '@'
-  | Passage -> '.'
-  | Door ch -> ch
-  | Key ch -> ch
-
 let is_passable = function
   | Entrance | Passage -> true
   | _ -> false
@@ -50,16 +43,6 @@ let read_grid ic =
     let g = List.fold_left add_point g tiles in
     loop (row+1) g with End_of_file -> g in
   loop 0 PtMap.empty
-
-let print_grid g =
-  let max_col, max_row = PtMap.fold
-    (fun (c,r) v (mc,mr) -> max mc c, max mr r) g (0,0) in
-  for row=0 to max_row do
-    for col=0 to max_col do
-      print_tile (PtMap.find (col, row) g) |> print_char
-    done;
-    print_newline ()
-  done
 
 (* bfs *)
 
@@ -98,12 +81,6 @@ let all_dists g =
   let pairs = PtMap.to_seq g |> List.of_seq in
   let all_dists = List.filter_map (dists g) pairs in
   List.to_seq all_dists |> CharMap.of_seq
-
-let print_dists d =
-  CharMap.iter (fun ch dist -> printf "%c -> %d\n" ch dist) d
-
-let print_all_dists d =
-  CharMap.iter (fun ch d -> printf "from %c:\n" ch; print_dists d) d
 
 (* updating dist map *)
 

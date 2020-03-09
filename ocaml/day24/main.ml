@@ -22,16 +22,6 @@ let read_grid (ic: in_channel): grid =
   let mc, mr = PtMap.fold (fun (c,r) _ (mc,mr) -> max mc c, max mr r) m (0,0) in
   {m; rows=mr+1; cols=mc+1}
 
-let print_grid (g: grid) =
-  for row=0 to g.rows-1 do
-    for col=0 to g.cols-1 do
-      printf "%c" (match PtMap.find (col,row) g.m with
-      | Alive -> '#'
-      | Dead -> '.')
-    done;
-    printf "\n"
-  done
-
 let pack (g: grid): int =
   let to_bit (c,r) = function
     | Alive -> Int.shift_left 1 (g.cols*r + c)
@@ -78,7 +68,6 @@ module RecPt = struct
   type t = rec_pt
   let compare {pt=p1; d=d1} {pt=p2; d=d2} =
     if d1 <> d2 then Int.compare d1 d2 else Pt2.compare p1 p2
-  let fmt {pt; d} = sprintf "(%s at %d)" (Pt2.fmt pt) d
 end
 module RecPtMap = Map.Make(RecPt)
 type rec_grid = state RecPtMap.t
@@ -110,10 +99,6 @@ let rec_nbrs ({pt=(col, row); d}: RecPt.t): RecPt.t list =
   | col, 4 -> [{pt=(2, 3); d=d-1}]
   | col, row -> [{pt=(col, row+1); d}] in
   left @ right @ up @ down
-
-let print_rec_nbrs g rp =
-  printf "nbrs of %s at level %d:\n" (Pt2.fmt rp.pt) rp.d;
-  rec_nbrs rp |> List.iter (fun rp -> RecPt.fmt rp |> printf "%s\n")
 
 let iterate_rec =
   iterate rec_nbrs RecPtMap.find_opt RecPtMap.mapi

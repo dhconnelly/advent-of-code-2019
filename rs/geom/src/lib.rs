@@ -15,6 +15,10 @@ pub struct Point2 {
 pub const ZERO2: Point2 = Point2 { x: 0, y: 0 };
 
 impl Point2 {
+    pub fn new(x: i32, y: i32) -> Point2 {
+        Point2 { x, y }
+    }
+
     pub fn manhattan_dist(&self, q: &Point2) -> i32 {
         (self.x - q.x).abs() + (self.y - q.y).abs()
     }

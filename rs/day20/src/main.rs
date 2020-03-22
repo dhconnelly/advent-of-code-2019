@@ -1,5 +1,7 @@
 use geom::*;
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::collections::VecDeque;
 use std::env;
 use std::error;
 use std::fs;
@@ -38,13 +40,6 @@ fn read_tile((pt, ch): (Point2, char)) -> Result<(Point2, Tile), String> {
 
 fn read_tiles(s: &str) -> Result<Tiles, String> {
     read_chars(s).into_iter().map(read_tile).collect()
-}
-
-#[derive(Debug)]
-struct Maze {
-    nbrs: HashMap<Point2, Vec<Point2>>,
-    begin: Point2,
-    end: Point2,
 }
 
 struct Bounds<'a> {
@@ -103,7 +98,7 @@ fn maze_bounds(tiles: &Tiles) -> Bounds {
     }
 }
 
-fn manhattan_nbrs<'a>(pt: &'a Point2, tiles: &'a Tiles) -> Vec<&'a Point2> {
+fn manhattan_nbrs<'a>(pt: &'a Point2, tiles: &'a Tiles) -> HashSet<&'a Point2> {
     pt.manhattan_neighbors()
         .iter()
         .filter_map(|nbr| match tiles.get_key_value(nbr) {
@@ -114,7 +109,7 @@ fn manhattan_nbrs<'a>(pt: &'a Point2, tiles: &'a Tiles) -> Vec<&'a Point2> {
         .collect()
 }
 
-fn all_manhattan_nbrs(tiles: &Tiles) -> HashMap<&Point2, Vec<&Point2>> {
+fn all_manhattan_nbrs(tiles: &Tiles) -> HashMap<&Point2, HashSet<&Point2>> {
     tiles
         .iter()
         .filter(|(_, tile)| *tile == &Tile::Passage)
@@ -147,15 +142,13 @@ fn portals_along<T: IntoIterator<Item = Point2>>(
     })
 }
 
-fn all_portals<'a>(
-    tiles: &'a Tiles,
-    Bounds {
+fn all_portals<'a>(tiles: &'a Tiles) -> HashMap<Portal, Vec<&'a Point2>> {
+    let Bounds {
         outer_lo,
         outer_hi,
         inner_lo,
         inner_hi,
-    }: Bounds<'a>,
-) -> HashMap<Portal, Vec<&'a Point2>> {
+    } = maze_bounds(tiles);
     let pt = Point2::new;
     let outer_top = (outer_lo.x..=outer_hi.x).map(|x| pt(x, outer_lo.y));
     let outer_bottom = (outer_lo.x..=outer_hi.x).map(|x| pt(x, outer_hi.y));
@@ -181,23 +174,66 @@ fn all_portals<'a>(
     portals
 }
 
-fn read_maze(tiles: &Tiles) -> Result<Maze, String> {
-    let nbrs = all_manhattan_nbrs(tiles);
-    let bounds = maze_bounds(tiles);
-    let portals = all_portals(tiles, bounds);
-    for (portal, nbrs) in portals.iter() {
-        println!("{:?} {:?}", portal, nbrs);
+fn link_portals<'a>(
+    nbrs: &mut HashMap<&'a Point2, HashSet<&'a Point2>>,
+    portals: &HashMap<Portal, Vec<&'a Point2>>,
+) {
+    for pq in portals.values() {
+        for p in pq.iter() {
+            for q in pq.iter() {
+                if p != q {
+                    nbrs.entry(q).or_default().insert(p);
+                    nbrs.entry(p).or_default().insert(q);
+                }
+            }
+        }
     }
-    // link across portals
-    // find begin and end
-    Err("not implemented".to_string())
+}
+
+struct Maze<'a> {
+    begin: &'a Point2,
+    end: &'a Point2,
+    nbrs: HashMap<&'a Point2, HashSet<&'a Point2>>,
+}
+
+fn read_maze(tiles: &Tiles) -> Maze {
+    let mut nbrs = all_manhattan_nbrs(tiles);
+    let portals = all_portals(tiles);
+    link_portals(&mut nbrs, &portals);
+    let begin = portals[&('A', 'A')][0];
+    let end = portals[&('Z', 'Z')][0];
+    Maze { begin, end, nbrs }
+}
+
+fn dist(
+    nbrs: &HashMap<&Point2, HashSet<&Point2>>,
+    src: &Point2,
+    dst: &Point2,
+) -> Option<usize> {
+    let mut q = VecDeque::new();
+    let mut v = HashSet::new();
+    q.push_back((src, 0));
+    v.insert(src);
+    while let Some((p, d)) = q.pop_front() {
+        for nbr in nbrs.get(p).unwrap() {
+            if *nbr == dst {
+                return Some(d + 1);
+            }
+            if v.contains(nbr) {
+                continue;
+            }
+            v.insert(nbr);
+            q.push_back((nbr, d + 1));
+        }
+    }
+    None
 }
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     let path = env::args().nth(1).ok_or("Usage: day20 <filename>")?;
     let text = fs::read_to_string(&path)?;
     let tiles = read_tiles(&text)?;
-    let maze = read_maze(&tiles)?;
-    println!("{:?}", maze);
+    let maze = read_maze(&tiles);
+    println!("{}", dist(&maze.nbrs, &maze.begin, &maze.end).unwrap());
     Ok(())
 }

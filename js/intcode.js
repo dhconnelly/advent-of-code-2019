@@ -1,13 +1,36 @@
 "use strict";
 
-const State = Object.freeze({
-    HALT: Symbol("halt"),
-    RUN: Symbol("run"),
+function makeEnum(entries) {
+    let lookup = Object.fromEntries(
+        Object.entries(entries).map((e) => [e[0], Symbol(e[1])])
+    );
+    let enumTable = Object.fromEntries(
+        Object.entries(lookup).map((e) => [entries[e[0]], e[1]])
+    );
+    enumTable.of = (i) => lookup[i];
+    return enumTable;
+}
+
+const State = makeEnum({
+    0: "HALT",
+    1: "RUN",
 });
 
-const Mode = Object.freeze({
-    IMM: Symbol("immediate"),
-    POS: Symbol("position"),
+const Mode = makeEnum({
+    0: "POS",
+    1: "IMM",
+});
+
+const Opcode = makeEnum({
+    1: "ADD",
+    2: "MUL",
+    3: "READ",
+    4: "WRITE",
+    5: "JMPIF",
+    6: "JMPNOT",
+    7: "LT",
+    8: "EQ",
+    99: "HALT",
 });
 
 class ExecutionError extends Error {
@@ -19,15 +42,6 @@ class ExecutionError extends Error {
 
 function div(x, y) {
     return Math.floor(x / y);
-}
-
-function toMode(x) {
-    switch (x) {
-        case 0:
-            return Mode.POS;
-        case 1:
-            return Mode.IMM;
-    }
 }
 
 class VM {
@@ -46,12 +60,10 @@ class VM {
     nextOp() {
         let op = this.mem[this.pc];
         let code = op % 100;
-        op = div(op, 100);
-        let mode1 = toMode(op % 10);
-        op = div(op, 10);
-        let mode2 = toMode(op % 10);
-        op = div(op, 10);
-        let mode3 = toMode(op % 10);
+        let modes = div(op, 100);
+        let mode1 = Mode.of(modes % 10);
+        let mode2 = Mode.of(div(modes, 10) % 10);
+        let mode3 = Mode.of(div(modes, 100) % 10);
         return {
             code: code,
             modes: [mode1, mode2, mode3],

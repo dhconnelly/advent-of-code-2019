@@ -105,7 +105,10 @@ class VM {
 
     step() {
         let op = this.nextOp();
-        if (this.debug) console.log(`pc=${this.pc}\t${Opcode.str(op.code)}`);
+        if (this.debug) {
+            console.log(`pc=${this.pc}\t${Opcode.str(op.code)}`);
+            console.log(this.mem);
+        }
         let modes = op.modes;
         let a = this.get(0, modes[0]);
         let b = this.get(1, modes[1]);

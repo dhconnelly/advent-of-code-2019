@@ -1,14 +1,16 @@
 "use strict";
 
-function makeEnum(entries) {
-    let lookup = Object.fromEntries(
-        Object.entries(entries).map((e) => [e[0], Symbol(e[1])])
-    );
-    let enumTable = Object.fromEntries(
-        Object.entries(lookup).map((e) => [entries[e[0]], e[1]])
-    );
-    enumTable.of = (i) => lookup[i];
-    return enumTable;
+function omap(obj, f) {
+    return Object.fromEntries(Object.entries(obj).map((e) => f(e[0], e[1])));
+}
+
+function makeEnum(enumMap) {
+    let intToSymbol = omap(enumMap, (k, v) => [k, Symbol(v)]);
+    let nameToSymbol = omap(intToSymbol, (k, v) => [enumMap[k], v]);
+    let symbolToName = omap(nameToSymbol, (k, v) => [v, k]);
+    nameToSymbol.of = (i) => intToSymbol[i];
+    nameToSymbol.str = (sym) => symbolToName[sym];
+    return nameToSymbol;
 }
 
 const State = makeEnum({
@@ -19,6 +21,7 @@ const State = makeEnum({
 const Mode = makeEnum({
     0: "POS",
     1: "IMM",
+    2: "REL",
 });
 
 const Opcode = makeEnum({
@@ -30,6 +33,7 @@ const Opcode = makeEnum({
     6: "JMPNOT",
     7: "LT",
     8: "EQ",
+    9: "ADJREL",
     99: "HALT",
 });
 
@@ -45,11 +49,13 @@ function div(x, y) {
 }
 
 class VM {
-    constructor(prog, getInput, writeOutput) {
+    constructor(prog, getInput, writeOutput, opts) {
         this.state = State.RUN;
         this.mem = prog.slice();
         this.getInput = getInput;
         this.writeOutput = writeOutput;
+        this.debug = opts && !!opts.debug;
+        this.sp = 0;
         this.pc = 0;
     }
 
@@ -59,7 +65,7 @@ class VM {
 
     nextOp() {
         let op = this.mem[this.pc];
-        let code = op % 100;
+        let code = Opcode.of(op % 100);
         let modes = div(op, 100);
         let mode1 = Mode.of(modes % 10);
         let mode2 = Mode.of(div(modes, 10) % 10);
@@ -77,6 +83,8 @@ class VM {
                 return this.mem[base + arg];
             case Mode.POS:
                 return this.mem[this.mem[base + arg]];
+            case Mode.REL:
+                return this.mem[this.sp + this.mem[base + arg]];
         }
     }
 
@@ -89,56 +97,66 @@ class VM {
             case Mode.IMM:
                 this.error("can't write in immediate mode");
                 break;
+            case Mode.REL:
+                this.mem[this.sp + this.mem[base + arg]] = val;
+                break;
         }
     }
 
     step() {
         let op = this.nextOp();
+        if (this.debug) console.log(`pc=${this.pc}\t${Opcode.str(op.code)}`);
         let modes = op.modes;
         let a = this.get(0, modes[0]);
         let b = this.get(1, modes[1]);
+
         switch (op.code) {
-            case 1:
+            case Opcode.ADD:
                 this.set(2, modes[2], a + b);
                 this.pc += 4;
                 break;
 
-            case 2:
+            case Opcode.MUL:
                 this.set(2, modes[2], a * b);
                 this.pc += 4;
                 break;
 
-            case 3:
+            case Opcode.READ:
                 this.set(0, modes[0], this.getInput());
                 this.pc += 2;
                 break;
 
-            case 4:
+            case Opcode.WRITE:
                 this.writeOutput(a);
                 this.pc += 2;
                 break;
 
-            case 5:
+            case Opcode.JMPIF:
                 if (a !== 0) this.pc = b;
                 else this.pc += 3;
                 break;
 
-            case 6:
+            case Opcode.JMPNOT:
                 if (a === 0) this.pc = b;
                 else this.pc += 3;
                 break;
 
-            case 7:
+            case Opcode.LT:
                 this.set(2, modes[2], a < b ? 1 : 0);
                 this.pc += 4;
                 break;
 
-            case 8:
+            case Opcode.EQ:
                 this.set(2, modes[2], a === b ? 1 : 0);
                 this.pc += 4;
                 break;
 
-            case 99:
+            case Opcode.ADJREL:
+                this.sp += a;
+                this.pc += 2;
+                break;
+
+            case Opcode.HALT:
                 this.state = State.HALT;
                 break;
         }

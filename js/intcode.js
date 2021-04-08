@@ -1,17 +1,6 @@
 "use strict";
 
-function omap(obj, f) {
-    return Object.fromEntries(Object.entries(obj).map((e) => f(e[0], e[1])));
-}
-
-function makeEnum(enumMap) {
-    let intToSymbol = omap(enumMap, (k, v) => [k, Symbol(v)]);
-    let nameToSymbol = omap(intToSymbol, (k, v) => [enumMap[k], v]);
-    let symbolToName = omap(nameToSymbol, (k, v) => [v, k]);
-    nameToSymbol.of = (i) => intToSymbol[i];
-    nameToSymbol.str = (sym) => symbolToName[sym];
-    return nameToSymbol;
-}
+const makeEnum = require("./util").makeEnum;
 
 const State = makeEnum({
     0: "HALT",

@@ -3,22 +3,36 @@
 const fs = require("fs");
 const intcode = require("../intcode");
 
-function run(prog, input1, input2) {
-    let vm = new intcode.VM(prog);
-    vm.run();
-    vm.write(input1);
-    vm.run();
-    vm.write(input2);
-    vm.run();
-    return vm.read();
-}
-
-function runCircuit(prog, n, seq) {
-    let signal = 0;
-    for (let i = 0; i < n; i++) {
-        signal = run(prog, seq[i], signal);
+class AmpCircuit {
+    constructor(prog, n, seq) {
+        this.signal = 0;
+        this.vms = [];
+        for (let i = 0; i < n; i++) {
+            let vm = new intcode.VM(prog);
+            vm.run();
+            vm.write(seq[i]);
+            vm.run();
+            this.vms.push(vm);
+        }
     }
-    return signal;
+
+    step() {
+        for (let vm of this.vms) {
+            if (vm.state === intcode.State.HALT) return;
+            vm.write(this.signal);
+            vm.run();
+            this.signal = vm.read();
+            vm.run();
+        }
+    }
+
+    is_halted() {
+        return this.vms[this.vms.length - 1].state === intcode.State.HALT;
+    }
+
+    run() {
+        while (!this.is_halted()) this.step();
+    }
 }
 
 function genPhaseSeq(n, phases, cur, f) {
@@ -39,8 +53,9 @@ function main(args) {
     const prog = toks.map((s) => parseInt(s, 10));
     let maxSignal = Number.MIN_SAFE_INTEGER;
     genPhaseSeq(5, [0, 1, 2, 3, 4], [], (seq) => {
-        let signal = runCircuit(prog, 5, seq);
-        maxSignal = Math.max(maxSignal, signal);
+        let circuit = new AmpCircuit(prog, 5, seq);
+        circuit.run();
+        maxSignal = Math.max(maxSignal, circuit.signal);
     });
     console.log(maxSignal);
 }

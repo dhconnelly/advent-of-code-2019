@@ -1,16 +1,18 @@
 const days = ["day1", "day2", "day5", "day7", "day9", "day15"];
 
+const loadModule = async (day) => [day, await import(`./${day}/index.js`)];
+const loadModules = async () =>
+    await Promise.all(days.map((day) => loadModule(day)));
+const modules = Object.fromEntries(await loadModules());
+
 function run(day) {
-    let base = "./" + day;
-    let m = require(base);
-    let path = base + "/input.txt";
     console.log(">", day);
-    m(path);
+    modules[day].main(`./${day}/input.txt`);
     console.log();
 }
 
 function runAll() {
-    days.forEach(run);
+    for (let day of days) run(day);
 }
 
 function main(args) {

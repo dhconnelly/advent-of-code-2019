@@ -1,9 +1,6 @@
-"use strict";
+import { makeEnum } from "./util.js";
 
-const util = require("./util");
-const makeEnum = util.makeEnum;
-
-const State = makeEnum({
+export const State = makeEnum({
     0: "HALT",
     1: "RUN",
     2: "READ",
@@ -29,7 +26,7 @@ const Opcode = makeEnum({
     99: "HALT",
 });
 
-class ExecutionError extends Error {
+export class ExecutionError extends Error {
     constructor(msg) {
         super(msg);
         this.name = "ExecutionError";
@@ -40,7 +37,7 @@ function div(x, y) {
     return Math.floor(x / y);
 }
 
-class VM {
+export class VM {
     constructor(prog, opts) {
         this.mem = prog.slice();
         this.debug = opts && !!opts.debug;
@@ -186,6 +183,3 @@ class VM {
         while (this.state === State.RUN) this.step();
     }
 }
-
-exports.State = State;
-exports.VM = VM;

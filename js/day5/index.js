@@ -1,20 +1,18 @@
-"use strict";
-
-const fs = require("fs");
-const intcode = require("../intcode");
+import { readFileSync } from "fs";
+import { VM, State } from "../intcode.js";
 
 function run(prog, testId) {
     let diagCode;
-    const vm = new intcode.VM(prog);
-    while (vm.state !== intcode.State.HALT) {
+    const vm = new VM(prog);
+    while (vm.state !== State.HALT) {
         switch (vm.state) {
-            case intcode.State.RUN:
+            case State.RUN:
                 vm.run();
                 break;
-            case intcode.State.WRITE:
+            case State.WRITE:
                 diagCode = vm.read();
                 break;
-            case intcode.State.READ:
+            case State.READ:
                 vm.write(testId);
                 break;
         }
@@ -22,12 +20,10 @@ function run(prog, testId) {
     return diagCode;
 }
 
-function main(path) {
-    const file = fs.readFileSync(path, "ascii");
+export function main(path) {
+    const file = readFileSync(path, "ascii");
     const toks = file.split(",");
     const prog = toks.map((s) => parseInt(s, 10));
     console.log(run(prog, 1));
     console.log(run(prog, 5));
 }
-
-module.exports = main;

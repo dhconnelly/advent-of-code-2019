@@ -1,4 +1,4 @@
-const fs = require("fs");
+import { readFileSync } from "fs";
 
 function fuelFor(mass) {
     return Math.floor(mass / 3) - 2;
@@ -12,8 +12,8 @@ function recFuelFor(mass) {
     return total;
 }
 
-function main(path) {
-    const file = fs.readFileSync(path, "ascii");
+export function main(path) {
+    const file = readFileSync(path, "ascii");
     const lines = file.split("\n");
     lines.pop();
 
@@ -24,5 +24,3 @@ function main(path) {
     const recFuels = masses.map(recFuelFor);
     console.log(recFuels.reduce((acc, x) => acc + x));
 }
-
-module.exports = main;

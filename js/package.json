@@ -1,0 +1,16 @@
+{
+    "name": "advent-of-code-2019",
+    "version": "1.0.0",
+    "description": "",
+    "type": "module",
+    "scripts": {
+        "run": "node index.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "github.com/dhconnelly/advent-of-code-2019/js"
+    },
+    "author": "Daniel Connelly <dhconnelly@gmail.com> (http://dhconnelly.com)",
+    "license": "BSD-3-Clause"
+}

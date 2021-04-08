@@ -1,13 +1,11 @@
-"use strict";
-
-const fs = require("fs");
-const intcode = require("../intcode");
+import { readFileSync } from "fs";
+import { VM } from "../intcode.js";
 
 function run(prog, a, b) {
     prog = prog.slice();
     prog[1] = a;
     prog[2] = b;
-    let vm = new intcode.VM(prog);
+    let vm = new VM(prog);
     vm.run();
     return vm.mem[0];
 }
@@ -22,12 +20,10 @@ function find(prog, target) {
     }
 }
 
-function main(path) {
-    const file = fs.readFileSync(path, "ascii");
+export function main(path) {
+    const file = readFileSync(path, "ascii");
     const toks = file.split(",");
     const prog = toks.map((s) => parseInt(s, 10));
     console.log(run(prog, 12, 2));
     console.log(find(prog, 19690720));
 }
-
-module.exports = main;

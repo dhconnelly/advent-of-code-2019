@@ -1,14 +1,12 @@
-"use strict";
-
-const fs = require("fs");
-const intcode = require("../intcode");
+import { readFileSync } from "fs";
+import { VM, State } from "../intcode.js";
 
 class AmpCircuit {
     constructor(prog, n, seq) {
         this.signal = 0;
         this.vms = [];
         for (let i = 0; i < n; i++) {
-            let vm = new intcode.VM(prog);
+            let vm = new VM(prog);
             vm.run();
             vm.write(seq[i]);
             vm.run();
@@ -18,7 +16,7 @@ class AmpCircuit {
 
     step() {
         for (let vm of this.vms) {
-            if (vm.state === intcode.State.HALT) return;
+            if (vm.state === State.HALT) return;
             vm.write(this.signal);
             vm.run();
             this.signal = vm.read();
@@ -27,7 +25,7 @@ class AmpCircuit {
     }
 
     is_halted() {
-        return this.vms[this.vms.length - 1].state === intcode.State.HALT;
+        return this.vms[this.vms.length - 1].state === State.HALT;
     }
 
     run() {
@@ -56,12 +54,10 @@ function maximize(prog, phases) {
     return maxSignal;
 }
 
-function main(path) {
-    const file = fs.readFileSync(path, "ascii");
+export function main(path) {
+    const file = readFileSync(path, "ascii");
     const toks = file.split(",");
     const prog = toks.map((s) => parseInt(s, 10));
     console.log(maximize(prog, [0, 1, 2, 3, 4]));
     console.log(maximize(prog, [5, 6, 7, 8, 9]));
 }
-
-module.exports = main;

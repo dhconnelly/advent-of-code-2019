@@ -1,17 +1,15 @@
-"use strict";
+import { readFileSync } from "fs";
+import { VM, State } from "../intcode.js";
+import { makeEnum, assertEq, assert } from "../util.js";
 
-const fs = require("fs");
-const intcode = require("../intcode");
-const util = require("../util");
-
-const Dir = util.makeEnum({
+const Dir = makeEnum({
     1: "NORTH",
     2: "SOUTH",
     3: "WEST",
     4: "EAST",
 });
 
-let Status = util.makeEnum({
+let Status = makeEnum({
     0: "WALL",
     1: "HALL",
     2: "OXY",
@@ -28,17 +26,17 @@ Status.toString = function (s) {
 
 class IntDroid {
     constructor(prog) {
-        this.vm = new intcode.VM(prog, { debug: false });
+        this.vm = new VM(prog, { debug: false });
         this.vm.run();
         this.status = null;
     }
 
     move(dir) {
-        util.assertEq(this.vm.state, intcode.State.READ);
+        assertEq(this.vm.state, State.READ);
         this.vm.write(Dir.int(dir));
         this.vm.run();
 
-        util.assertEq(this.vm.state, intcode.State.WRITE);
+        assertEq(this.vm.state, State.WRITE);
         this.status = Status.of(this.vm.read());
         this.vm.run();
 
@@ -54,7 +52,7 @@ function go(pos, dir) {
         case Dir.EAST: return { x: pos.x + 1, y: pos.y };
         case Dir.WEST: return { x: pos.x - 1, y: pos.y };
     }
-    util.assert(false);
+    assert(false);
 }
 
 function opposite(dir) {
@@ -65,7 +63,7 @@ function opposite(dir) {
         case Dir.EAST: return Dir.WEST;
         case Dir.WEST: return Dir.EAST;
     }
-    util.assert(false);
+    assert(false);
 }
 
 function keyFor(pt) {
@@ -98,7 +96,7 @@ class Explorer {
             if (status !== Status.WALL) {
                 this.explore(newPos);
                 let retStatus = this.droid.move(opposite(dir));
-                util.assertEq(Status.HALL, retStatus);
+                assertEq(Status.HALL, retStatus);
             }
         }
     }
@@ -163,8 +161,8 @@ function max(dists) {
     return max;
 }
 
-function main(path) {
-    const file = fs.readFileSync(path, "ascii");
+export function main(path) {
+    const file = readFileSync(path, "ascii");
     const toks = file.split(",");
     const prog = toks.map((s) => parseInt(s, 10));
     const map = explore(prog);
@@ -176,5 +174,3 @@ function main(path) {
     const oxyDists = bfs(map, oxy);
     console.log(max(oxyDists));
 }
-
-module.exports = main;

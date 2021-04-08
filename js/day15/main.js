@@ -168,9 +168,6 @@ function main(args) {
     const file = fs.readFileSync(path, "ascii");
     const toks = file.split(",");
     const prog = toks.map((s) => parseInt(s, 10));
-    for (let x of prog) {
-        util.assertEq(typeof x, "number");
-    }
     const map = explore(prog);
 
     const startDists = bfs(map, { x: 0, y: 0 });

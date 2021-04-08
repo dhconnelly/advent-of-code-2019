@@ -1,6 +1,7 @@
 "use strict";
 
-const makeEnum = require("./util").makeEnum;
+const util = require("./util");
+const makeEnum = util.makeEnum;
 
 const State = makeEnum({
     0: "HALT",
@@ -69,29 +70,36 @@ class VM {
 
     get(arg, mode) {
         const base = this.pc + 1;
+        let pos;
         switch (mode) {
             case Mode.IMM:
-                return this.mem[base + arg];
+                pos = base + arg;
+                break;
             case Mode.POS:
-                return this.mem[this.mem[base + arg]];
+                pos = this.mem[base + arg];
+                break;
             case Mode.REL:
-                return this.mem[this.sp + this.mem[base + arg]];
+                pos = this.sp + this.mem[base + arg];
+                break;
         }
+        return this.mem[pos];
     }
 
     set(arg, mode, val) {
         const base = this.pc + 1;
+        let pos;
         switch (mode) {
             case Mode.POS:
-                this.mem[this.mem[base + arg]] = val;
+                pos = this.mem[base + arg];
                 break;
             case Mode.IMM:
                 this.error("can't write in immediate mode");
                 break;
             case Mode.REL:
-                this.mem[this.sp + this.mem[base + arg]] = val;
+                pos = this.sp + this.mem[base + arg];
                 break;
         }
+        this.mem[pos] = val;
     }
 
     write(x) {
@@ -108,11 +116,16 @@ class VM {
 
     step() {
         let op = this.nextOp();
-        if (this.debug) {
-            console.log(`pc=${this.pc}\t${Opcode.str(op.code)}`);
-            console.log(this.mem);
-        }
         let modes = op.modes;
+        if (this.debug) {
+            let pc = this.pc;
+            let mem = this.mem;
+            console.log(
+                `pc=${pc}\t${Opcode.str(op.code)}\t(${op.modes.map((m) =>
+                    Mode.str(m)
+                )})\t${mem[pc + 1]}\t${mem[pc + 2]}\t${mem[pc + 3]}`
+            );
+        }
         let a = this.get(0, modes[0]);
         let b = this.get(1, modes[1]);
 
@@ -128,6 +141,7 @@ class VM {
                 break;
 
             case Opcode.READ:
+                if (this.debug) console.log("VM is reading");
                 this.state = State.READ;
                 break;
 

@@ -12,8 +12,7 @@ function recFuelFor(mass) {
     return total;
 }
 
-function main(argv) {
-    const path = argv[0];
+function main(path) {
     const file = fs.readFileSync(path, "ascii");
     const lines = file.split("\n");
     lines.pop();
@@ -26,4 +25,4 @@ function main(argv) {
     console.log(recFuels.reduce((acc, x) => acc + x));
 }
 
-main(process.argv.slice(2));
+module.exports = main;

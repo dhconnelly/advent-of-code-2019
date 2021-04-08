@@ -22,8 +22,7 @@ function find(prog, target) {
     }
 }
 
-function main(argv) {
-    const path = argv[0];
+function main(path) {
     const file = fs.readFileSync(path, "ascii");
     const toks = file.split(",");
     const prog = toks.map((s) => parseInt(s, 10));
@@ -31,4 +30,4 @@ function main(argv) {
     console.log(find(prog, 19690720));
 }
 
-main(process.argv.slice(2));
+module.exports = main;

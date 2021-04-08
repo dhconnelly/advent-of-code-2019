@@ -22,8 +22,7 @@ function run(prog, testId) {
     return diagCode;
 }
 
-function main(args) {
-    const path = args[0];
+function main(path) {
     const file = fs.readFileSync(path, "ascii");
     const toks = file.split(",");
     const prog = toks.map((s) => parseInt(s, 10));
@@ -31,4 +30,4 @@ function main(args) {
     console.log(run(prog, 5));
 }
 
-main(process.argv.slice(2));
+module.exports = main;

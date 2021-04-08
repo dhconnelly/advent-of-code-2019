@@ -46,18 +46,23 @@ function genPhaseSeq(n, phases, cur, f) {
     }
 }
 
+function maximize(prog, phases) {
+    let maxSignal = Number.MIN_SAFE_INTEGER;
+    genPhaseSeq(phases.length, phases, [], (seq) => {
+        let circuit = new AmpCircuit(prog, 5, seq);
+        circuit.run();
+        maxSignal = Math.max(maxSignal, circuit.signal);
+    });
+    return maxSignal;
+}
+
 function main(args) {
     const path = args[0];
     const file = fs.readFileSync(path, "ascii");
     const toks = file.split(",");
     const prog = toks.map((s) => parseInt(s, 10));
-    let maxSignal = Number.MIN_SAFE_INTEGER;
-    genPhaseSeq(5, [0, 1, 2, 3, 4], [], (seq) => {
-        let circuit = new AmpCircuit(prog, 5, seq);
-        circuit.run();
-        maxSignal = Math.max(maxSignal, circuit.signal);
-    });
-    console.log(maxSignal);
+    console.log(maximize(prog, [0, 1, 2, 3, 4]));
+    console.log(maximize(prog, [5, 6, 7, 8, 9]));
 }
 
 main(process.argv.slice(2));

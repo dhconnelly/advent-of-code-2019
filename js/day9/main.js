@@ -4,12 +4,20 @@ const fs = require("fs");
 const intcode = require("../intcode");
 
 function run(prog, input) {
-    const vm = new intcode.VM(
-        prog,
-        () => input,
-        (x) => console.log(x)
-    );
-    vm.run();
+    const vm = new intcode.VM(prog);
+    while (vm.state !== intcode.State.HALT) {
+        switch (vm.state) {
+            case intcode.State.READ:
+                vm.write(input);
+                break;
+            case intcode.State.WRITE:
+                console.log(vm.read());
+                break;
+            case intcode.State.RUN:
+                vm.run();
+                break;
+        }
+    }
 }
 
 function main(args) {

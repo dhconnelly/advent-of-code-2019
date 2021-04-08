@@ -16,6 +16,8 @@ function makeEnum(enumMap) {
 const State = makeEnum({
     0: "HALT",
     1: "RUN",
+    2: "READ",
+    3: "WRITE",
 });
 
 const Mode = makeEnum({
@@ -49,12 +51,12 @@ function div(x, y) {
 }
 
 class VM {
-    constructor(prog, getInput, writeOutput, opts) {
-        this.state = State.RUN;
+    constructor(prog, opts) {
         this.mem = prog.slice();
-        this.getInput = getInput;
-        this.writeOutput = writeOutput;
         this.debug = opts && !!opts.debug;
+        this.state = State.RUN;
+        this.input = 0;
+        this.output = 0;
         this.sp = 0;
         this.pc = 0;
     }
@@ -103,6 +105,18 @@ class VM {
         }
     }
 
+    write(x) {
+        let op = this.nextOp();
+        this.set(0, op.modes[0], x);
+        this.state = State.RUN;
+        this.pc += 2;
+    }
+
+    read() {
+        this.state = State.RUN;
+        return this.output;
+    }
+
     step() {
         let op = this.nextOp();
         if (this.debug) {
@@ -125,12 +139,12 @@ class VM {
                 break;
 
             case Opcode.READ:
-                this.set(0, modes[0], this.getInput());
-                this.pc += 2;
+                this.state = State.READ;
                 break;
 
             case Opcode.WRITE:
-                this.writeOutput(a);
+                this.output = a;
+                this.state = State.WRITE;
                 this.pc += 2;
                 break;
 
@@ -166,7 +180,7 @@ class VM {
     }
 
     run() {
-        while (this.state != State.HALT) this.step();
+        while (this.state === State.RUN) this.step();
     }
 }
 

@@ -4,20 +4,13 @@ const fs = require("fs");
 const intcode = require("../intcode");
 
 function run(prog, input1, input2) {
-    let i = 0;
-    let out;
-    let vm = new intcode.VM(
-        prog,
-        () => {
-            let val = i++ === 0 ? input1 : input2;
-            return val;
-        },
-        (x) => {
-            out = x;
-        }
-    );
+    let vm = new intcode.VM(prog);
     vm.run();
-    return out;
+    vm.write(input1);
+    vm.run();
+    vm.write(input2);
+    vm.run();
+    return vm.read();
 }
 
 function runCircuit(prog, n, seq) {

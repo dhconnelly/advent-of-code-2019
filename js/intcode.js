@@ -46,6 +46,7 @@ export class VM {
         this.output = 0;
         this.sp = 0;
         this.pc = 0;
+        this.onWrite = opts && opts.onWrite;
     }
 
     error(msg) {
@@ -97,10 +98,12 @@ export class VM {
                 break;
         }
         this.mem[pos] = val;
+        if (this.onWrite) this.onWrite(pos, val);
     }
 
     write(x) {
         let op = this.nextOp();
+        this.input = x;
         this.set(0, op.modes[0], x);
         this.state = State.RUN;
         this.pc += 2;
@@ -112,6 +115,8 @@ export class VM {
     }
 
     step() {
+        if (this.state !== State.RUN) return;
+
         let op = this.nextOp();
         let modes = op.modes;
         if (this.debug) {

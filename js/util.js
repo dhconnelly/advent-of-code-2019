@@ -3,7 +3,7 @@ function omap(obj, f) {
 }
 
 export function makeEnum(enumMap) {
-    let intToSymbol = omap(enumMap, (k, v) => [k, Symbol(v)]);
+    let intToSymbol = omap(enumMap, (k, v) => [k, v]);
     let symbolToInt = omap(intToSymbol, (k, v) => [v, +k]);
     let nameToSymbol = omap(intToSymbol, (k, v) => [enumMap[k], v]);
     let symbolToName = omap(nameToSymbol, (k, v) => [v, k]);
@@ -12,7 +12,7 @@ export function makeEnum(enumMap) {
     eenum.of = (i) => intToSymbol[i];
     eenum.str = (sym) => symbolToName[sym];
     eenum.int = (sym) => symbolToInt[sym];
-    eenum.all = () => Object.getOwnPropertySymbols(symbolToName);
+    eenum.all = () => Object.keys(symbolToName);
     return eenum;
 }
 

@@ -8,50 +8,94 @@ def parse(f):
 DIRS = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
 
-def dists(maze, targets, held_keys, row, col):
+def dists(maze, row, col):
     d = {}
-    v = set()
-    v.add((row, col))
+    v = {(row, col)}
     q = collections.deque()
     q.append(((row, col), 0))
-    while len(q) > 0:
-        (row, col), dist = q.popleft()
-        if maze[row][col] in targets:
-            d[maze[row][col]] = ((row, col), dist)
+    while q:
+        ((row, col), dist) = q.popleft()
         for (dr, dc) in DIRS:
             nr, nc = row + dr, col + dc
             if nr < 0 or nr >= len(maze) or nc < 0 or nc >= len(maze[nr]):
                 continue
             if (nr, nc) in v:
                 continue
-            ch = maze[nr][nc]
-            if ch == '#' or ch.isupper() and ch.lower() not in held_keys:
-                continue
             v.add((nr, nc))
-            q.append(((nr, nc), dist+1))
+            ch = maze[nr][nc]
+            if ch not in ('.', '#'):
+                d[ch] = dist+1
+            if ch in ('.', '@') or ch.islower():
+                q.append(((nr, nc), dist+1))
     return d
 
 
-def cache_key(keys, row, col):
-    return f"{''.join(sorted(keys))},{row},{col}"
+def cache_key(ch, keys):
+    return ch + str(keys)
 
 
-def collect(maze, want_keys, held_keys, row, col, cache={}):
-    if len(want_keys) == 0:
+def connect_across(g, ch):
+    nbrs = g[ch]
+    for x in nbrs:
+        for y in nbrs:
+            if x != y:
+                dist = g[x][ch] + g[ch][y]
+                if y not in g[x]:
+                    g[x][y] = dist
+                else:
+                    g[x][y] = min(g[x][y], dist)
+
+
+def collect_key(g, key):
+    g2 = {k: v.copy() for (k, v) in g.items()}
+    connect_across(g2, key)
+    if (door := key.upper()) in g:
+        connect_across(g2, door)
+    return g2
+
+
+def bit_in(ch, bits):
+    i = ord(ch) - ord('a')
+    return ((1 << i) & bits) > 0
+
+
+def bit_remove(ch, bits):
+    i = ord(ch) - ord('a')
+    return (~(1 << i)) & bits
+
+
+def bit_make(chs):
+    bits = 0
+    for ch in chs:
+        bits = bits | (1 << (ord(ch) - ord('a')))
+    return bits
+
+
+def remove(g, key):
+    for nbr in g[key]:
+        del g[nbr][key]
+    del g[key]
+    if key.islower() and (door := key.upper()) in g:
+        for nbr in g[door]:
+            del g[nbr][door]
+        del g[door]
+
+
+def collect_all(g, from_key, want_keys, cache):
+    if want_keys == 0:
         return 0
-    ck = cache_key(held_keys, row, col)
+    ck = cache_key(from_key, want_keys)
     if ck in cache:
         return cache[ck]
     min_steps = None
-    reachable = dists(maze, want_keys, held_keys, row, col)
-    for key, ((row, col), dist) in reachable.items():
-        want_keys.remove(key)
-        held_keys.add(key)
-        steps = dist + collect(maze, want_keys, held_keys, row, col)
+    dists = g[from_key]
+    remove(g, from_key)
+    for key in (ch for ch in dists if ch.islower() and bit_in(ch, want_keys)):
+        want_keys2 = bit_remove(key, want_keys)
+        g2 = collect_key(g, key)
+        steps = dists[key] + collect_all(g2, key, want_keys2, cache)
         if min_steps is None or steps < min_steps:
             min_steps = steps
-        want_keys.add(key)
-        held_keys.remove(key)
     cache[ck] = min_steps
     return min_steps
 
@@ -60,18 +104,21 @@ def all_keys(maze):
     return {ch for row in maze for ch in row if ch.islower()}
 
 
-def find_start(maze):
-    for i, row in enumerate(maze):
-        for j, ch in enumerate(row):
-            if ch == '@':
-                return (i, j)
+def all_dists(maze):
+    g = {}
+    for (i, row) in enumerate(maze):
+        for (j, ch) in enumerate(row):
+            if ch not in ('.', '#'):
+                g[ch] = dists(maze, i, j)
+    return g
 
 
 def main(args):
     with open(args[1]) as f:
         maze = parse(f)
-    (row, col) = find_start(maze)
-    print(collect(maze, all_keys(maze), set(), row, col))
+    dists = all_dists(maze)
+    want_keys = bit_make({ch for ch in dists if ch.islower()})
+    print(collect_all(dists, '@', want_keys, {}))
 
 
 if __name__ == '__main__':

@@ -36,14 +36,16 @@ def cache_key(ch, keys):
 
 def connect_across(g, ch):
     nbrs = g[ch]
-    for x in nbrs:
-        for y in nbrs:
-            if x != y:
-                dist = g[x][ch] + g[ch][y]
-                if y not in g[x]:
-                    g[x][y] = dist
-                else:
-                    g[x][y] = min(g[x][y], dist)
+    nbr_keys = list(nbrs.keys())
+    for (i, x) in enumerate(nbr_keys):
+        for y in nbr_keys[i+1:]:
+            dist = g[x][ch] + g[ch][y]
+            if y not in g[x]:
+                g[x][y] = dist
+                g[y][x] = dist
+            else:
+                g[x][y] = min(g[x][y], dist)
+                g[y][x] = min(g[y][x], dist)
 
 
 def collect_key(g, key):
@@ -98,10 +100,6 @@ def collect_all(g, from_key, want_keys, cache):
             min_steps = steps
     cache[ck] = min_steps
     return min_steps
-
-
-def all_keys(maze):
-    return {ch for row in maze for ch in row if ch.islower()}
 
 
 def all_dists(maze):

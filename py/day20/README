@@ -1,0 +1,20 @@
+# aoc19day20
+
+## developing
+
+    # set up venv and install deps
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements-dev.txt
+
+    # hack hack hack
+
+    # check your code
+    mypy --exclude .venv .
+    black --exclude .venv .
+    flake8 --exclude .venv .
+    pytest
+
+## usage
+
+    python day20.py input.txt

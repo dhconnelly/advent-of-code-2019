@@ -1,0 +1,4 @@
+.venv
+.pytest*
+.mypy*
+__pycache__

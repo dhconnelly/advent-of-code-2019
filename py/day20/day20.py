@@ -101,12 +101,57 @@ def maze(grid: list[list[str]]) -> Maze:
     return Maze(tiles, links)
 
 
+DIRS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+
+
+def resolve(maze: Maze, row: int, col: int) -> tuple[int, int]:
+    tile = maze.tiles[row][col]
+    if isinstance(tile, Portal):
+        portals = maze.links[tile.label]
+        if len(portals) == 1:
+            return portals[0].tile
+        a, b = portals
+        return a.tile if b == tile else b.tile
+    return (row, col)
+
+
+def nbrs(maze: Maze, row: int, col: int) -> list[tuple[int, int]]:
+    tiles = (
+        resolve(maze, row + drow, col + dcol)
+        for (drow, dcol) in DIRS
+        if row + drow >= 0
+        and row + drow < len(maze.tiles)
+        and col + dcol >= 0
+        and col + dcol < len(maze.tiles[0])
+    )
+    return [(row, col) for (row, col) in tiles if maze.tiles[row][col] == "."]
+
+
+def bfs(maze: Maze, begin_label: str, end_label: str) -> int:
+    begin = maze.links[begin_label][0].tile
+    end = maze.links[end_label][0].tile
+    v: set[tuple[int, int]] = set([begin])
+    d: dict[tuple[int, int], int] = {begin: 0}
+    q: list[tuple[tuple[int, int], int]] = [(begin, 0)]
+    while len(q) > 0:
+        (tile, dist) = q.pop(0)
+        for nbr in nbrs(maze, *tile):
+            if nbr == end:
+                return dist + 1
+            if nbr in v:
+                continue
+            v.add(nbr)
+            d[nbr] = dist + 1
+            q.append((nbr, dist + 1))
+    assert False
+
+
 def main(args: list[str]):
     with open(args[0]) as f:
         s = f.read()
         g = grid(s)
         m = maze(g)
-        print(m)
+        print(bfs(m, "AA", "ZZ"))
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ target/test.o: test.c
 	mkdir -p target
 	$(CC) -c $< -o $@
 
-target/test: target/test.o target/day2_test.o vm.o parse.o
+target/test: target/test.o target/day2_test.o target/vm.o target/parse.o
 	mkdir -p target
 	$(CC) $^ -o $@
 

@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     vm.mem[1] = 12;
     vm.mem[2] = 2;
     run(&vm);
-    printf("%d\n", vm.mem[0]);
+    printf("%lld\n", vm.mem[0]);
 
     return 0;
 }

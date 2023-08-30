@@ -11,7 +11,7 @@ vm new_vm(void) {
     return vm;
 }
 
-vm make_vm(int mem[], int mem_size) {
+vm make_vm(int64_t mem[], int mem_size) {
     vm vm = new_vm();
     for (int i = 0; i < mem_size && i < MAX_MEM; i++) vm.mem[i] = mem[i];
     vm.mem_size = mem_size;
@@ -25,7 +25,7 @@ void print_vm(const vm* vm) {
     printf("  mem = [");
     for (int i = 0; i < vm->mem_size; i++) {
         if (i != 0) printf(", ");
-        printf("%d", vm->mem[i]);
+        printf("%lld", vm->mem[i]);
     }
     printf("]\n");
     printf("}\n");

@@ -1,5 +1,6 @@
 #include "vm.h"
 
+#include <assert.h>
 #include <stdio.h>
 
 vm new_vm(void) {
@@ -12,6 +13,7 @@ vm new_vm(void) {
 }
 
 vm make_vm(int64_t mem[], int mem_size) {
+    assert(mem_size < MAX_MEM);
     vm vm = new_vm();
     for (int i = 0; i < mem_size && i < MAX_MEM; i++) vm.mem[i] = mem[i];
     vm.mem_size = mem_size;

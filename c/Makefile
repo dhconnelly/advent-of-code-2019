@@ -22,11 +22,23 @@ target/day2: target/day2.o target/vm.o target/parse.o
 	mkdir -p target
 	$(CC) $^ -o $@
 
+target/day5.o: day5.c vm.h parse.h
+	mkdir -p target
+	$(CC) -c $< -o $@
+
+target/day5_test.o: day5_test.c vm.h
+	mkdir -p target
+	$(CC) -c $< -o $@
+
+target/day5: target/day5.o target/vm.o target/parse.o
+	mkdir -p target
+	$(CC) $^ -o $@
+
 target/test.o: test.c
 	mkdir -p target
 	$(CC) -c $< -o $@
 
-target/test: target/test.o target/day2_test.o target/vm.o target/parse.o
+target/test: target/test.o target/day2_test.o target/day5_test.o target/vm.o target/parse.o
 	mkdir -p target
 	$(CC) $^ -o $@
 

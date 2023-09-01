@@ -2,13 +2,14 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 vm new_vm(void) {
     vm vm;
     for (int i = 0; i < MAX_MEM; i++) vm.mem[i] = 0;
     vm.mem_size = 0;
     vm.pc = 0;
-    vm.state = RUNNING;
+    vm.state = VM_RUNNING;
     return vm;
 }
 
@@ -34,21 +35,39 @@ void print_vm(const vm* vm) {
 }
 
 void step(vm* vm) {
-    if (vm->state != RUNNING) {
-        return;
-    }
     if (vm->pc < 0 || vm->pc >= vm->mem_size) {
-        vm->state = ERROR;
+        vm->state = VM_ERROR;
         vm->error = PC_OUT_OF_RANGE;
         return;
     }
 
+    if (vm->state == VM_INPUT) {
+        if (vm->pc > vm->mem_size - 4) {
+            vm->error = PC_OUT_OF_RANGE;
+            vm->state = VM_ERROR;
+            return;
+        }
+        int dest = vm->mem[vm->pc + 1];
+        vm->mem[dest] = vm->input;
+        vm->pc += 2;
+        vm->state = VM_RUNNING;
+    }
+
+    if (vm->state == VM_OUTPUT) {
+        vm->state = VM_RUNNING;
+    }
+
+    if (vm->state == VM_HALTED || vm->state == VM_ERROR) {
+        return;
+    }
+
     opcode op = vm->mem[vm->pc];
+    if (getenv("VM_TRACE")) printf("%08x\t%4d\n", vm->pc, op);
     switch (op) {
         case ADD: {
             if (vm->pc > vm->mem_size - 4) {
                 vm->error = PC_OUT_OF_RANGE;
-                vm->state = ERROR;
+                vm->state = VM_ERROR;
                 return;
             }
             int l = vm->mem[vm->pc + 1];
@@ -63,7 +82,7 @@ void step(vm* vm) {
         case MUL: {
             if (vm->pc > vm->mem_size - 4) {
                 vm->error = PC_OUT_OF_RANGE;
-                vm->state = ERROR;
+                vm->state = VM_ERROR;
                 return;
             }
             int l = vm->mem[vm->pc + 1];
@@ -74,13 +93,36 @@ void step(vm* vm) {
             return;
         }
 
+        case IN: {
+            if (vm->pc > vm->mem_size - 2) {
+                vm->error = PC_OUT_OF_RANGE;
+                vm->state = VM_ERROR;
+                return;
+            }
+            vm->state = VM_INPUT;
+            return;
+        }
+
+        case OUT: {
+            if (vm->pc > vm->mem_size - 2) {
+                vm->error = PC_OUT_OF_RANGE;
+                vm->state = VM_ERROR;
+                return;
+            }
+            int src = vm->mem[vm->pc + 1];
+            vm->output = vm->mem[src];
+            vm->pc += 2;
+            vm->state = VM_OUTPUT;
+            return;
+        }
+
         case HALT: {
-            vm->state = HALTED;
+            vm->state = VM_HALTED;
             return;
         }
 
         default: {
-            vm->state = ERROR;
+            vm->state = VM_ERROR;
             vm->error = INVALID_OPCODE;
             return;
         }
@@ -88,5 +130,7 @@ void step(vm* vm) {
 }
 
 void run(vm* vm) {
-    while (vm->state == RUNNING) step(vm);
+    do {
+        step(vm);
+    } while (vm->state == VM_RUNNING);
 }

@@ -6,14 +6,18 @@
 #define MAX_MEM 1024
 
 typedef enum {
-    HALTED,
-    RUNNING,
-    ERROR,
+    VM_HALTED,
+    VM_RUNNING,
+    VM_ERROR,
+    VM_INPUT,
+    VM_OUTPUT,
 } state;
 
 typedef enum {
     ADD = 1,
     MUL = 2,
+    IN = 3,
+    OUT = 4,
     HALT = 99,
 } opcode;
 
@@ -28,6 +32,8 @@ typedef struct {
     int pc;
     int mem_size;
     int64_t mem[MAX_MEM];
+    int64_t input;
+    int64_t output;
 } vm;
 
 vm new_vm(void);

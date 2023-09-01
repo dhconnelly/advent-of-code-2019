@@ -5,17 +5,15 @@
 #include "parse.h"
 #include "vm.h"
 
-int64_t part1(vm vm) {
+int64_t evaluate(vm vm, int64_t input) {
     run(&vm);
     assert(vm.state == VM_INPUT);
-    vm.input = 1;
+    vm.input = input;
     int64_t output;
     for (run(&vm); vm.state == VM_OUTPUT; run(&vm)) output = vm.output;
     assert(vm.state == VM_HALTED);
     return output;
 }
-
-int64_t part2(vm vm) { return 0; }
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -35,8 +33,8 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    printf("%lld\n", part1(vm));
-    printf("%lld\n", part2(vm));
+    printf("%lld\n", evaluate(vm, 1));
+    printf("%lld\n", evaluate(vm, 5));
 
     return 0;
 }

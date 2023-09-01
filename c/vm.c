@@ -169,6 +169,66 @@ void step(vm* vm) {
             return;
         }
 
+        case JMP_IF: {
+            if (vm->pc > vm->mem_size - 3) {
+                vm->error = PC_OUT_OF_RANGE;
+                vm->state = VM_ERROR;
+                return;
+            }
+            int64_t arg = eval_arg(vm, instr.modes[0], vm->pc + 1);
+            int64_t dest = eval_arg(vm, instr.modes[1], vm->pc + 2);
+            if (arg)
+                vm->pc = dest;
+            else
+                vm->pc += 3;
+            return;
+        }
+
+        case JMP_NOT: {
+            if (vm->pc > vm->mem_size - 3) {
+                vm->error = PC_OUT_OF_RANGE;
+                vm->state = VM_ERROR;
+                return;
+            }
+            int64_t arg = eval_arg(vm, instr.modes[0], vm->pc + 1);
+            int64_t dest = eval_arg(vm, instr.modes[1], vm->pc + 2);
+            if (!arg)
+                vm->pc = dest;
+            else
+                vm->pc += 3;
+            return;
+        }
+
+        case LT: {
+            if (vm->pc > vm->mem_size - 4) {
+                vm->error = PC_OUT_OF_RANGE;
+                vm->state = VM_ERROR;
+                return;
+            }
+            int64_t l = eval_arg(vm, instr.modes[0], vm->pc + 1);
+            int64_t r = eval_arg(vm, instr.modes[1], vm->pc + 2);
+            unsigned dest = eval_dest(vm, instr.modes[2], vm->pc + 3);
+            vm->mem[dest] = l < r;
+            if (getenv("VM_TRACE")) printf("%08x <- %d\n", dest, l < r);
+            vm->pc += 4;
+            return;
+        }
+
+        case EQ: {
+            if (vm->pc > vm->mem_size - 4) {
+                vm->error = PC_OUT_OF_RANGE;
+                vm->state = VM_ERROR;
+                return;
+            }
+            int64_t l = eval_arg(vm, instr.modes[0], vm->pc + 1);
+            int64_t r = eval_arg(vm, instr.modes[1], vm->pc + 2);
+            unsigned dest = eval_dest(vm, instr.modes[2], vm->pc + 3);
+            vm->mem[dest] = l == r;
+            if (getenv("VM_TRACE")) printf("%08x <- %d\n", dest, l == r);
+            vm->pc += 4;
+            return;
+        }
+
         case HALT: {
             vm->state = VM_HALTED;
             return;

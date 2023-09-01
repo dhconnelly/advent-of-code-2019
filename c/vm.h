@@ -18,6 +18,10 @@ typedef enum {
     MUL = 2,
     IN = 3,
     OUT = 4,
+    JMP_IF = 5,
+    JMP_NOT = 6,
+    LT = 7,
+    EQ = 8,
     HALT = 99,
 } opcode;
 

@@ -1,0 +1,15 @@
+to run tests:
+
+    make test
+
+to run a solution (make sure the input is saved as inputs/dayN.txt):
+
+    make dayN && ./target/dayN inputs/dayN.txt
+
+to build and run remotely on the host $REMOTE_DEPLOY_HOST in the
+directory $REMOTE_DEPLOY_PATH:
+
+    ./run_remote.sh dayN
+
+your local and remote ssh configs should allow login without a password
+with `ssh $REMOTE_DEPLOY_HOST`, i.e. using certificates

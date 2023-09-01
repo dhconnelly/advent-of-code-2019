@@ -22,8 +22,10 @@ typedef enum {
 } opcode;
 
 typedef enum {
-    PC_OUT_OF_RANGE = 1,
-    INVALID_OPCODE = 2,
+    NO_ERROR,
+    PC_OUT_OF_RANGE,
+    INVALID_OPCODE,
+    INVALID_MODE,
 } error;
 
 typedef struct {

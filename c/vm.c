@@ -34,8 +34,58 @@ void print_vm(const vm* vm) {
     printf("}\n");
 }
 
+typedef enum {
+    MODE_POS = 0,
+    MODE_IMM = 1,
+} mode;
+
+typedef struct {
+    opcode op;
+    mode modes[3];
+} instr;
+
+instr parse_instr(int64_t val) {
+    instr instr;
+    instr.op = val % 100;
+    instr.modes[0] = (val / 100) % 10;
+    instr.modes[1] = (val / 1000) % 10;
+    instr.modes[2] = (val / 10000) % 10;
+    return instr;
+}
+
+void print_instr(int pc, instr instr) {
+    printf("%08x\t%2d\t%d %d %d\n", pc, instr.op, instr.modes[0],
+           instr.modes[1], instr.modes[2]);
+}
+
+int64_t eval_arg(vm* vm, mode mode, int64_t arg_ptr) {
+    switch (mode) {
+        case MODE_POS:
+            return vm->mem[vm->mem[arg_ptr]];
+        case MODE_IMM:
+            return vm->mem[arg_ptr];
+        default:
+            vm->state = VM_ERROR;
+            vm->error = INVALID_MODE;
+            return 0;
+    }
+}
+
+int64_t eval_dest(vm* vm, mode mode, int64_t arg_ptr) {
+    switch (mode) {
+        case MODE_POS:
+            return vm->mem[arg_ptr];
+        case MODE_IMM:
+        default:
+            vm->state = VM_ERROR;
+            vm->error = INVALID_MODE;
+            return 0;
+    }
+}
+
 void step(vm* vm) {
     if (vm->pc < 0 || vm->pc >= vm->mem_size) {
+        if (getenv("VM_TRACE")) printf("error: vm out of range\n");
         vm->state = VM_ERROR;
         vm->error = PC_OUT_OF_RANGE;
         return;
@@ -47,7 +97,8 @@ void step(vm* vm) {
             vm->state = VM_ERROR;
             return;
         }
-        int dest = vm->mem[vm->pc + 1];
+        instr prev_instr = parse_instr(vm->mem[vm->pc]);
+        int dest = eval_dest(vm, prev_instr.modes[0], vm->pc + 1);
         vm->mem[dest] = vm->input;
         vm->pc += 2;
         vm->state = VM_RUNNING;
@@ -61,19 +112,20 @@ void step(vm* vm) {
         return;
     }
 
-    opcode op = vm->mem[vm->pc];
-    if (getenv("VM_TRACE")) printf("%08x\t%4d\n", vm->pc, op);
-    switch (op) {
+    instr instr = parse_instr(vm->mem[vm->pc]);
+    if (getenv("VM_TRACE")) print_instr(vm->pc, instr);
+    switch (instr.op) {
         case ADD: {
             if (vm->pc > vm->mem_size - 4) {
                 vm->error = PC_OUT_OF_RANGE;
                 vm->state = VM_ERROR;
                 return;
             }
-            int l = vm->mem[vm->pc + 1];
-            int r = vm->mem[vm->pc + 2];
-            int dest = vm->mem[vm->pc + 3];
-            vm->mem[dest] = vm->mem[l] + vm->mem[r];
+            int64_t l = eval_arg(vm, instr.modes[0], vm->pc + 1);
+            int64_t r = eval_arg(vm, instr.modes[1], vm->pc + 2);
+            unsigned dest = eval_dest(vm, instr.modes[2], vm->pc + 3);
+            vm->mem[dest] = l + r;
+            if (getenv("VM_TRACE")) printf("%08x <- %lld\n", dest, l + r);
             vm->pc += 4;
             break;
             return;
@@ -85,10 +137,11 @@ void step(vm* vm) {
                 vm->state = VM_ERROR;
                 return;
             }
-            int l = vm->mem[vm->pc + 1];
-            int r = vm->mem[vm->pc + 2];
-            int dest = vm->mem[vm->pc + 3];
-            vm->mem[dest] = vm->mem[l] * vm->mem[r];
+            int64_t l = eval_arg(vm, instr.modes[0], vm->pc + 1);
+            int64_t r = eval_arg(vm, instr.modes[1], vm->pc + 2);
+            unsigned dest = eval_dest(vm, instr.modes[2], vm->pc + 3);
+            vm->mem[dest] = l * r;
+            if (getenv("VM_TRACE")) printf("%08x <- %lld\n", dest, l * r);
             vm->pc += 4;
             return;
         }
@@ -109,8 +162,8 @@ void step(vm* vm) {
                 vm->state = VM_ERROR;
                 return;
             }
-            int src = vm->mem[vm->pc + 1];
-            vm->output = vm->mem[src];
+            int64_t src = eval_arg(vm, instr.modes[0], vm->pc + 1);
+            vm->output = src;
             vm->pc += 2;
             vm->state = VM_OUTPUT;
             return;
@@ -122,6 +175,7 @@ void step(vm* vm) {
         }
 
         default: {
+            if (getenv("VM_TRACE")) printf("error: invalid opcode\n");
             vm->state = VM_ERROR;
             vm->error = INVALID_OPCODE;
             return;

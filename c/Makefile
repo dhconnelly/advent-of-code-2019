@@ -1,6 +1,6 @@
 CC=cc
 
-all: target/day2
+all: target/day2 target/day5
 
 target/parse.o: parse.c parse.h
 	mkdir -p target

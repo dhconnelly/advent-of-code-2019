@@ -58,7 +58,15 @@ target/test.o: test.c
 	mkdir -p target
 	$(CC) -c $< -o $@
 
-target/test: target/test.o target/day2_test.o target/day5_test.o target/vm.o target/parse.o target/day7_test.o target/amp.o target/comb.o
+target/hash.o: hash.c hash.h
+	mkdir -p target
+	$(CC) -c $< -o $@
+
+target/hash_test.o: hash_test.c hash.h
+	mkdir -p target
+	$(CC) -c $< -o $@
+
+target/test: target/test.o target/day2_test.o target/day5_test.o target/vm.o target/parse.o target/day7_test.o target/amp.o target/comb.o target/hash.o target/hash_test.o
 	mkdir -p target
 	$(CC) $^ -o $@
 

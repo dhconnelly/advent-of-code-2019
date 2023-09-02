@@ -41,6 +41,7 @@ typedef struct {
     hashtable mem;
     int64_t input;
     int64_t output;
+    int trace;
 } vm;
 
 void init_vm(vm* vm);

@@ -31,10 +31,9 @@ void table_copy(hashtable into, const hashtable from) {
     }
 }
 
-static int hash(int key) {
+static unsigned hash(unsigned key) {
     unsigned idx;
-    for (idx = key > 0 ? 0 : 1; key != 0; key /= 10)
-        idx = (key % 10) + 31 * idx;
+    for (idx = 0; key != 0; key /= 10) idx = (key % 10) + 31 * idx;
     return idx % HASHSIZE;
 }
 

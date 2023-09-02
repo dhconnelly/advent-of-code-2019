@@ -59,6 +59,7 @@ void init_vm(vm* vm) {
     vm->input = 0;
     vm->output = 0;
     vm->relbase = 0;
+    vm->trace = getenv("VM_TRACE") != NULL;
 }
 
 vm new_vm(void) {
@@ -112,16 +113,15 @@ void step(vm* vm) {
     }
 
     instr instr = parse_instr(*table_get(vm->mem, vm->pc));
-    if (getenv("VM_TRACE")) print_instr(vm->pc, instr);
+    if (vm->trace) print_instr(vm->pc, instr);
     switch (instr.op) {
         case ADD: {
             int64_t l = eval_arg(vm, instr.modes[0], vm->pc + 1);
             int64_t r = eval_arg(vm, instr.modes[1], vm->pc + 2);
             unsigned dest = eval_dest(vm, instr.modes[2], vm->pc + 3);
             set_mem(vm, dest, l + r);
-            if (getenv("VM_TRACE")) printf("%08x <- %lld\n", dest, l + r);
+            if (vm->trace) printf("%08x <- %lld\n", dest, l + r);
             vm->pc += 4;
-            break;
             return;
         }
 
@@ -130,7 +130,7 @@ void step(vm* vm) {
             int64_t r = eval_arg(vm, instr.modes[1], vm->pc + 2);
             unsigned dest = eval_dest(vm, instr.modes[2], vm->pc + 3);
             set_mem(vm, dest, l * r);
-            if (getenv("VM_TRACE")) printf("%08x <- %lld\n", dest, l * r);
+            if (vm->trace) printf("%08x <- %lld\n", dest, l * r);
             vm->pc += 4;
             return;
         }
@@ -173,7 +173,7 @@ void step(vm* vm) {
             int64_t r = eval_arg(vm, instr.modes[1], vm->pc + 2);
             unsigned dest = eval_dest(vm, instr.modes[2], vm->pc + 3);
             set_mem(vm, dest, l < r);
-            if (getenv("VM_TRACE")) printf("%08x <- %d\n", dest, l < r);
+            if (vm->trace) printf("%08x <- %d\n", dest, l < r);
             vm->pc += 4;
             return;
         }
@@ -183,7 +183,7 @@ void step(vm* vm) {
             int64_t r = eval_arg(vm, instr.modes[1], vm->pc + 2);
             unsigned dest = eval_dest(vm, instr.modes[2], vm->pc + 3);
             set_mem(vm, dest, l == r);
-            if (getenv("VM_TRACE")) printf("%08x <- %d\n", dest, l == r);
+            if (vm->trace) printf("%08x <- %d\n", dest, l == r);
             vm->pc += 4;
             return;
         }
@@ -201,7 +201,7 @@ void step(vm* vm) {
         }
 
         default: {
-            if (getenv("VM_TRACE")) printf("error: invalid opcode\n");
+            if (vm->trace) printf("error: invalid opcode\n");
             vm->state = VM_ERROR;
             vm->error = INVALID_OPCODE;
             return;

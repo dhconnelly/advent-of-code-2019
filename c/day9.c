@@ -6,10 +6,7 @@
 #include "vm.h"
 
 void execute(vm vm, int64_t input) {
-    run(&vm);
-    assert(vm.state == VM_INPUT);
-    vm.input = input;
-    while (vm.state != VM_HALTED) {
+    do {
         run(&vm);
         switch (vm.state) {
             case VM_ERROR:
@@ -19,14 +16,14 @@ void execute(vm vm, int64_t input) {
                 printf("%lld\n", vm.output);
                 break;
             case VM_INPUT:
-                fprintf(stderr, "unexpected INPUT instruction");
-                return;
+                vm.input = input;
+                break;
             case VM_RUNNING:
+                break;
             case VM_HALTED:
                 break;
         }
-        run(&vm);
-    }
+    } while (vm.state != VM_HALTED);
 }
 
 int main(int argc, char* argv[]) {
@@ -47,5 +44,6 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
     fill_table(vm.mem, data, 1024);
-    execute(vm, 1);
+    execute(copy_vm(&vm), 1);
+    execute(copy_vm(&vm), 2);
 }

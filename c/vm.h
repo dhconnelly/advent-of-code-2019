@@ -22,6 +22,7 @@ typedef enum {
     JMP_NOT = 6,
     LT = 7,
     EQ = 8,
+    ADJREL = 9,
     HALT = 99,
 } opcode;
 
@@ -36,6 +37,7 @@ typedef struct {
     state state;
     error error;
     int pc;
+    int relbase;
     hashtable mem;
     int64_t input;
     int64_t output;

@@ -7,6 +7,7 @@
 typedef enum {
     MODE_POS = 0,
     MODE_IMM = 1,
+    MODE_REL = 2,
 } mode;
 
 typedef struct {
@@ -27,6 +28,8 @@ int64_t eval_arg(vm* vm, mode mode, int64_t arg_ptr) {
             return get_mem(vm, get_mem(vm, arg_ptr));
         case MODE_IMM:
             return get_mem(vm, arg_ptr);
+        case MODE_REL:
+            return get_mem(vm, vm->relbase + get_mem(vm, arg_ptr));
         default:
             vm->state = VM_ERROR;
             vm->error = INVALID_MODE;
@@ -38,6 +41,8 @@ int64_t eval_dest(vm* vm, mode mode, int64_t arg_ptr) {
     switch (mode) {
         case MODE_POS:
             return get_mem(vm, arg_ptr);
+        case MODE_REL:
+            return vm->relbase + get_mem(vm, arg_ptr);
         case MODE_IMM:
         default:
             vm->state = VM_ERROR;
@@ -47,9 +52,13 @@ int64_t eval_dest(vm* vm, mode mode, int64_t arg_ptr) {
 }
 
 void init_vm(vm* vm) {
-    init_table(vm->mem);
     vm->pc = 0;
     vm->state = VM_RUNNING;
+    init_table(vm->mem);
+    vm->error = 0;
+    vm->input = 0;
+    vm->output = 0;
+    vm->relbase = 0;
 }
 
 vm new_vm(void) {
@@ -176,6 +185,13 @@ void step(vm* vm) {
             set_mem(vm, dest, l == r);
             if (getenv("VM_TRACE")) printf("%08x <- %d\n", dest, l == r);
             vm->pc += 4;
+            return;
+        }
+
+        case ADJREL: {
+            int64_t offset = eval_arg(vm, instr.modes[0], vm->pc + 1);
+            vm->relbase += offset;
+            vm->pc += 2;
             return;
         }
 

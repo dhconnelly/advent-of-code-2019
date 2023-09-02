@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ -z "$REMOTE_DEPLOY_HOST" ]; then
     echo "missing variable: REMOTE_DEPLOY_HOST"
@@ -16,10 +16,10 @@ if [ -z "$1" ]; then
 fi
 
 HOST=$REMOTE_DEPLOY_HOST
-ROOT=advent-of-code-2019
+ROOT=deploy/advent-of-code-2019
 DAY=$1
 
-echo "deploying to $HOST..." &&
+echo "deploying to $HOST:$ROOT..." &&
     make clean &&
     ssh $HOST "mkdir -p $ROOT" &&
     scp -r * $HOST:$ROOT/ &&

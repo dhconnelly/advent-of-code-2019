@@ -8,7 +8,10 @@
 #include "parse.h"
 #include "vm.h"
 
+typedef int64_t (*execute)(circuit*, phase_sequence, int64_t);
+
 typedef struct {
+    execute f;
     vm vm;
     int64_t max;
     int64_t input;
@@ -17,7 +20,7 @@ typedef struct {
 void* find_max(int64_t seq[], void* data) {
     acc* acc = data;
     circuit circuit = make_circuit(acc->vm);
-    int64_t output = run_series(&circuit, seq, acc->input);
+    int64_t output = acc->f(&circuit, seq, acc->input);
     if (output > acc->max) acc->max = output;
     return acc;
 }
@@ -38,12 +41,21 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    acc acc;
-    acc.vm = vm;
-    acc.input = 0;
-    acc.max = ~0;
-    phase_sequence seq = {0, 1, 2, 3, 4};
-    visit_permutations(seq, 5, find_max, &acc);
+    acc acc1;
+    acc1.f = &run_series;
+    acc1.vm = vm;
+    acc1.input = 0;
+    acc1.max = ~0;
+    phase_sequence seq1 = {0, 1, 2, 3, 4};
+    visit_permutations(seq1, 5, find_max, &acc1);
+    printf("%lld\n", acc1.max);
 
-    printf("%lld\n", acc.max);
+    acc acc2;
+    acc2.f = &run_loop;
+    acc2.vm = vm;
+    acc2.input = 0;
+    acc2.max = ~0;
+    phase_sequence seq2 = {5, 6, 7, 8, 9};
+    visit_permutations(seq2, 5, find_max, &acc2);
+    printf("%lld\n", acc2.max);
 }

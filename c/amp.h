@@ -14,5 +14,6 @@ typedef struct {
 void init_circuit(circuit* circuit, vm vm);
 circuit make_circuit(vm vm);
 int64_t run_series(circuit* circuit, phase_sequence setting, int64_t input);
+int64_t run_loop(circuit* circuit, phase_sequence setting, int64_t input);
 
 #endif  // AMP_H_

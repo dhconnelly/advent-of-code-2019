@@ -22,10 +22,11 @@ void day5_test2() {
     int64_t prog[] = {1002, 4, 3, 4, 33};
     vm vm = make_vm(prog, sizeof(prog) / sizeof(int64_t));
     run(&vm);
-    assert(vm.mem[4] == 99);
+    assert(get_mem(&vm, 4) == 99);
 }
 
-int64_t evaluate(vm f, int64_t input) {
+int64_t evaluate(vm base, int64_t input) {
+    vm f = copy_vm(&base);
     run(&f);
     assert(f.state == VM_INPUT);
     f.input = input;

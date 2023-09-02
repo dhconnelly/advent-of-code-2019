@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define MAX_MEM 1024
+#include "hash.h"
 
 typedef enum {
     VM_HALTED,
@@ -36,8 +36,7 @@ typedef struct {
     state state;
     error error;
     int pc;
-    int mem_size;
-    int64_t mem[MAX_MEM];
+    hashtable mem;
     int64_t input;
     int64_t output;
 } vm;
@@ -45,8 +44,11 @@ typedef struct {
 void init_vm(vm* vm);
 vm new_vm(void);
 vm make_vm(int64_t mem[], int mem_size);
+vm copy_vm(const vm* vm);
 void print_vm(const vm* vm);
 void step(vm* vm);
 void run(vm* vm);
+int64_t get_mem(vm* vm, int addr);
+void set_mem(vm* vm, int addr, int64_t val);
 
 #endif  // VM_H_

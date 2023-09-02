@@ -35,11 +35,15 @@ int main(int argc, char* argv[]) {
         perror("day7");
         exit(1);
     }
+
     vm vm = new_vm();
-    if ((vm.mem_size = parse_intcode(f, vm.mem, MAX_MEM)) < 0) {
-        perror("day7: failed to parse intcode");
+    int64_t data[1024];
+    int len;
+    if ((len = parse_intcode(f, data, 1024)) < 0) {
+        perror("day7");
         exit(1);
     }
+    fill_table(vm.mem, data, 1024);
 
     acc acc1;
     acc1.f = &run_series;

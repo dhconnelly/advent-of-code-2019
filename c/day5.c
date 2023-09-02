@@ -5,13 +5,13 @@
 #include "parse.h"
 #include "vm.h"
 
-int64_t evaluate(vm vm, int64_t input) {
-    run(&vm);
-    assert(vm.state == VM_INPUT);
-    vm.input = input;
+int64_t evaluate(vm* vm, int64_t input) {
+    run(vm);
+    assert(vm->state == VM_INPUT);
+    vm->input = input;
     int64_t output;
-    for (run(&vm); vm.state == VM_OUTPUT; run(&vm)) output = vm.output;
-    assert(vm.state == VM_HALTED);
+    for (run(vm); vm->state == VM_OUTPUT; run(vm)) output = vm->output;
+    assert(vm->state == VM_HALTED);
     return output;
 }
 
@@ -27,14 +27,20 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    vm vm = new_vm();
-    if ((vm.mem_size = parse_intcode(f, vm.mem, MAX_MEM)) < 0) {
+    vm base = new_vm();
+    int64_t data[1024];
+    int len;
+    if ((len = parse_intcode(f, data, 1024)) < 0) {
         perror("day5");
         exit(1);
     }
+    fill_table(base.mem, data, 1024);
 
-    printf("%lld\n", evaluate(vm, 1));
-    printf("%lld\n", evaluate(vm, 5));
+    vm local = copy_vm(&base);
+    printf("%lld\n", evaluate(&local, 1));
+
+    local = copy_vm(&base);
+    printf("%lld\n", evaluate(&local, 5));
 
     return 0;
 }

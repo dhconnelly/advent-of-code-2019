@@ -4,12 +4,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void init_vm(vm* vm) {
+    for (int i = 0; i < MAX_MEM; i++) vm->mem[i] = 0;
+    vm->mem_size = 0;
+    vm->pc = 0;
+    vm->state = VM_RUNNING;
+}
+
 vm new_vm(void) {
     vm vm;
-    for (int i = 0; i < MAX_MEM; i++) vm.mem[i] = 0;
-    vm.mem_size = 0;
-    vm.pc = 0;
-    vm.state = VM_RUNNING;
+    init_vm(&vm);
     return vm;
 }
 

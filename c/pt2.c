@@ -1,5 +1,8 @@
 #include "pt2.h"
 
-void map_set(hashtable table, pt2 pt, int64_t val) {}
-
-int64_t map_get(hashtable table, pt2 pt) { return 0; }
+pt2 make_pt(int16_t x, int16_t y) {
+    pt2 pt;
+    pt.coords.x = x;
+    pt.coords.y = y;
+    return pt;
+}

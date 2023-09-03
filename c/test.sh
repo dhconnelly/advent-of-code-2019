@@ -1,3 +1,9 @@
 #!/usr/bin/env bash
 
-make test && make runall && diff snapshot.txt <(make -s runall)
+if make -s test && make -s runall && diff snapshot.txt <(make -s runall); then
+    echo "SUCCESS"
+    exit 0
+else
+    echo "FAILURE"
+    exit 1
+fi

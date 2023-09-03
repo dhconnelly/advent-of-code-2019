@@ -47,6 +47,8 @@ typedef struct {
 vm new_vm(void);
 vm make_vm(int64_t mem[], int mem_size);
 vm copy_vm(const vm* vm);
+void init_vm(vm* vm);
+void load_vm(vm* vm, int64_t mem[], int mem_size);
 void run(vm* vm);
 int64_t get_mem(vm* vm, int addr);
 void set_mem(vm* vm, int addr, int64_t val);

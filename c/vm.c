@@ -51,7 +51,7 @@ static int64_t eval_dest(vm* vm, mode mode, int64_t arg_ptr) {
     }
 }
 
-static void init_vm(vm* vm) {
+void init_vm(vm* vm) {
     vm->pc = 0;
     vm->state = VM_RUNNING;
     init_table(&vm->mem);
@@ -62,6 +62,11 @@ static void init_vm(vm* vm) {
     vm->trace = getenv("VM_TRACE") != NULL;
 }
 
+void load_vm(vm* vm, int64_t mem[], int mem_size) {
+    init_vm(vm);
+    fill_table(&vm->mem, mem, mem_size);
+}
+
 vm new_vm(void) {
     vm vm;
     init_vm(&vm);
@@ -70,7 +75,7 @@ vm new_vm(void) {
 
 vm make_vm(int64_t mem[], int mem_size) {
     vm vm = new_vm();
-    fill_table(&vm.mem, mem, mem_size);
+    load_vm(&vm, mem, mem_size);
     return vm;
 }
 

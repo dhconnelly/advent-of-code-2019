@@ -13,4 +13,6 @@ typedef union {
     uint32_t data;
 } pt2;
 
+pt2 make_pt(int16_t x, int16_t y);
+
 #endif  // PT2_H_

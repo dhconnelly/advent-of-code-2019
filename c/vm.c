@@ -15,10 +15,10 @@ typedef struct {
     mode modes[3];
 } instr;
 
-void set_mem(vm* vm, int loc, int64_t val) { table_set(vm->mem, loc, val); }
+void set_mem(vm* vm, int loc, int64_t val) { table_set(&vm->mem, loc, val); }
 
 int64_t get_mem(vm* vm, int loc) {
-    int64_t* val = table_get(vm->mem, loc);
+    int64_t* val = table_get(&vm->mem, loc);
     return val == NULL ? 0 : *val;
 }
 
@@ -54,7 +54,7 @@ static int64_t eval_dest(vm* vm, mode mode, int64_t arg_ptr) {
 static void init_vm(vm* vm) {
     vm->pc = 0;
     vm->state = VM_RUNNING;
-    init_table(vm->mem);
+    init_table(&vm->mem);
     vm->error = 0;
     vm->input = 0;
     vm->output = 0;
@@ -70,13 +70,13 @@ vm new_vm(void) {
 
 vm make_vm(int64_t mem[], int mem_size) {
     vm vm = new_vm();
-    fill_table(vm.mem, mem, mem_size);
+    fill_table(&vm.mem, mem, mem_size);
     return vm;
 }
 
 vm copy_vm(const vm* base) {
     vm local = *base;
-    table_copy(local.mem, base->mem);
+    table_copy(&local.mem, &base->mem);
     return local;
 }
 
@@ -96,7 +96,7 @@ static void print_instr(int pc, instr instr) {
 
 static void step(vm* vm) {
     if (vm->state == VM_INPUT) {
-        instr prev_instr = parse_instr(*table_get(vm->mem, vm->pc));
+        instr prev_instr = parse_instr(*table_get(&vm->mem, vm->pc));
         int dest = eval_dest(vm, prev_instr.modes[0], vm->pc + 1);
         set_mem(vm, dest, vm->input);
         vm->pc += 2;
@@ -111,7 +111,7 @@ static void step(vm* vm) {
         return;
     }
 
-    instr instr = parse_instr(*table_get(vm->mem, vm->pc));
+    instr instr = parse_instr(*table_get(&vm->mem, vm->pc));
     if (vm->trace) print_instr(vm->pc, instr);
     switch (instr.op) {
         case ADD: {

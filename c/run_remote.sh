@@ -10,14 +10,8 @@ if [ -z "$REMOTE_DEPLOY_PATH" ]; then
     exit 1
 fi
 
-if [ -z "$1" ]; then
-    echo "usage: run_remote.sh dayN"
-    exit 1
-fi
-
 HOST=$REMOTE_DEPLOY_HOST
 ROOT=deploy/advent-of-code-2019
-DAY=$1
 
 echo "deploying to $HOST:$ROOT..." &&
     make clean &&
@@ -26,5 +20,5 @@ echo "deploying to $HOST:$ROOT..." &&
     echo "building on $HOST..." &&
     ssh $HOST "cd $ROOT && make clean && make all" &&
     echo "executing on $HOST..." &&
-    ssh $HOST "cd $ROOT && time ./target/$DAY inputs/$DAY.txt" &&
+    ssh $HOST "cd $ROOT && time make runall" &&
     echo "done."

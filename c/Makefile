@@ -105,7 +105,7 @@ test: target/test
 	./target/test
 
 day%: target/day%
-	./target/$@ ../$@/input.txt
+	./target/$@ inputs/$@.txt
 
 .PHONY: clean
 

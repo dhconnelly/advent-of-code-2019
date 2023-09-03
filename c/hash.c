@@ -67,3 +67,15 @@ void table_set(hashtable* table, uint32_t key, int64_t val) {
 }
 
 int table_size(hashtable* table) { return table->size; }
+
+uint32_t* table_keys(hashtable* table) {
+    uint32_t* keys = malloc(table->size * sizeof(uint32_t));
+    int i = 0;
+    for (int bucket = 0; bucket < HASHSIZE; bucket++) {
+        for (hashnode* node = table->table[bucket]; node != NULL;
+             node = node->next) {
+            keys[i++] = node->key;
+        }
+    }
+    return keys;
+}

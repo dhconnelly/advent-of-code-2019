@@ -89,10 +89,6 @@ target/pt2.o: pt2.c pt2.h hash.h
 	mkdir -p target
 	$(CC) -c $< -o $@
 
-target/pt2_test.o: pt2_test.c pt2.h
-	mkdir -p target
-	$(CC) -c $< -o $@
-
 target/hash.o: hash.c hash.h
 	mkdir -p target
 	$(CC) -c $< -o $@
@@ -101,7 +97,7 @@ target/hash_test.o: hash_test.c hash.h
 	mkdir -p target
 	$(CC) -c $< -o $@
 
-target/test: target/test.o target/day2_test.o target/day5_test.o target/vm.o target/parse.o target/day7_test.o target/amp.o target/comb.o target/hash.o target/hash_test.o target/day9_test.o target/pt2.o target/pt2_test.o
+target/test: target/test.o target/day2_test.o target/day5_test.o target/vm.o target/parse.o target/day7_test.o target/amp.o target/comb.o target/hash.o target/hash_test.o target/day9_test.o target/pt2.o
 	mkdir -p target
 	$(CC) $^ -o $@
 

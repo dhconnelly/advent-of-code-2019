@@ -22,7 +22,7 @@ int64_t get_mem(vm* vm, int loc) {
     return val == NULL ? 0 : *val;
 }
 
-int64_t eval_arg(vm* vm, mode mode, int64_t arg_ptr) {
+static int64_t eval_arg(vm* vm, mode mode, int64_t arg_ptr) {
     switch (mode) {
         case MODE_POS:
             return get_mem(vm, get_mem(vm, arg_ptr));
@@ -32,12 +32,12 @@ int64_t eval_arg(vm* vm, mode mode, int64_t arg_ptr) {
             return get_mem(vm, vm->relbase + get_mem(vm, arg_ptr));
         default:
             vm->state = VM_ERROR;
-            vm->error = INVALID_MODE;
+            vm->error = ERR_INVALID_MODE;
             return 0;
     }
 }
 
-int64_t eval_dest(vm* vm, mode mode, int64_t arg_ptr) {
+static int64_t eval_dest(vm* vm, mode mode, int64_t arg_ptr) {
     switch (mode) {
         case MODE_POS:
             return get_mem(vm, arg_ptr);
@@ -46,12 +46,12 @@ int64_t eval_dest(vm* vm, mode mode, int64_t arg_ptr) {
         case MODE_IMM:
         default:
             vm->state = VM_ERROR;
-            vm->error = INVALID_MODE;
+            vm->error = ERR_INVALID_MODE;
             return 0;
     }
 }
 
-void init_vm(vm* vm) {
+static void init_vm(vm* vm) {
     vm->pc = 0;
     vm->state = VM_RUNNING;
     init_table(vm->mem);
@@ -71,7 +71,6 @@ vm new_vm(void) {
 vm make_vm(int64_t mem[], int mem_size) {
     vm vm = new_vm();
     fill_table(vm.mem, mem, mem_size);
-    for (int i = 0; i < mem_size; i++) table_set(vm.mem, i, mem[i]);
     return vm;
 }
 
@@ -81,7 +80,7 @@ vm copy_vm(const vm* base) {
     return local;
 }
 
-instr parse_instr(int64_t val) {
+static instr parse_instr(int64_t val) {
     instr instr;
     instr.op = val % 100;
     instr.modes[0] = (val / 100) % 10;
@@ -90,12 +89,12 @@ instr parse_instr(int64_t val) {
     return instr;
 }
 
-void print_instr(int pc, instr instr) {
+static void print_instr(int pc, instr instr) {
     printf("%08x\t%2d\t%d %d %d\n", pc, instr.op, instr.modes[0],
            instr.modes[1], instr.modes[2]);
 }
 
-void step(vm* vm) {
+static void step(vm* vm) {
     if (vm->state == VM_INPUT) {
         instr prev_instr = parse_instr(*table_get(vm->mem, vm->pc));
         int dest = eval_dest(vm, prev_instr.modes[0], vm->pc + 1);
@@ -203,7 +202,7 @@ void step(vm* vm) {
         default: {
             if (vm->trace) printf("error: invalid opcode\n");
             vm->state = VM_ERROR;
-            vm->error = INVALID_OPCODE;
+            vm->error = ERR_INVALID_OPCODE;
             return;
         }
     }

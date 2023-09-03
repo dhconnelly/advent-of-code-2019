@@ -3,7 +3,7 @@
 
 #include "vm.h"
 
-void day5_test1() {
+static void day5_test1() {
     printf("day5_test1\n");
     int64_t prog[] = {3, 0, 4, 0, 99};
     vm vm = make_vm(prog, sizeof(prog) / sizeof(int64_t));
@@ -17,7 +17,7 @@ void day5_test1() {
     assert(vm.state == VM_HALTED);
 }
 
-void day5_test2() {
+static void day5_test2() {
     printf("day5_test2\n");
     int64_t prog[] = {1002, 4, 3, 4, 33};
     vm vm = make_vm(prog, sizeof(prog) / sizeof(int64_t));
@@ -25,7 +25,7 @@ void day5_test2() {
     assert(get_mem(&vm, 4) == 99);
 }
 
-int64_t evaluate(vm base, int64_t input) {
+static int64_t evaluate(vm base, int64_t input) {
     vm f = copy_vm(&base);
     run(&f);
     assert(f.state == VM_INPUT);
@@ -38,7 +38,7 @@ int64_t evaluate(vm base, int64_t input) {
     return output;
 }
 
-void test_equals() {
+static void test_equals() {
     printf("day5_test3 eq\n");
     int64_t prog1[] = {3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8};
     int64_t prog2[] = {3, 3, 1108, -1, 8, 3, 4, 3, 99};
@@ -53,7 +53,7 @@ void test_equals() {
     }
 }
 
-void test_lt() {
+static void test_lt() {
     printf("day5_test3 lt\n");
     int64_t prog1[] = {3, 9, 7, 9, 10, 9, 4, 9, 99, -1, 8};
     int64_t prog2[] = {3, 3, 1107, -1, 8, 3, 4, 3, 99};
@@ -68,7 +68,7 @@ void test_lt() {
     }
 }
 
-void test_jmp() {
+static void test_jmp() {
     printf("day5_test3 jmp\n");
     int64_t prog1[] = {3, 12, 6, 12, 15, 1, 13, 14, 13, 4, 13, 99, -1, 0, 1, 9};
     int64_t prog2[] = {3, 3, 1105, -1, 9, 1101, 0, 0, 12, 4, 12, 99, 1};
@@ -84,7 +84,7 @@ void test_jmp() {
     }
 }
 
-void day5_test3() {
+static void day5_test3() {
     printf("day5_test3\n");
 
     test_equals();

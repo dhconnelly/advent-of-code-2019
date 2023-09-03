@@ -6,7 +6,7 @@
 #include "amp.h"
 #include "comb.h"
 
-void day7_test1() {
+static void day7_test1() {
     printf("day7_test1\n");
     int64_t prog[] = {3,  15, 3,  16, 1002, 16, 10, 16, 1,
                       16, 15, 15, 4,  15,   99, 0,  0};
@@ -17,7 +17,7 @@ void day7_test1() {
     assert(output == 43210);
 }
 
-void day7_test2() {
+static void day7_test2() {
     printf("day7_test2\n");
     int64_t prog[] = {3, 23, 3,  24, 1002, 24, 10, 24, 1002, 23, -1, 23, 101,
                       5, 23, 23, 1,  24,   23, 23, 4,  23,   99, 0,  0};
@@ -28,7 +28,7 @@ void day7_test2() {
     assert(output == 54321);
 }
 
-void day7_test3() {
+static void day7_test3() {
     printf("day7_test3\n");
     int64_t prog[] = {3,    31, 3,  32, 1002, 32, 10, 32, 1001, 31, -2, 31,
                       1007, 31, 0,  33, 1002, 33, 7,  33, 1,    33, 31, 31,
@@ -45,28 +45,27 @@ typedef struct perm_list {
     struct perm_list* next;
 } perm_list;
 
-int perm_len(const perm_list* list) {
+static int perm_len(const perm_list* list) {
     int len = 0;
     for (const perm_list* node = list; node != NULL; node = node->next) ++len;
     return len;
 }
 
-// TODO: make all test functions static
-void* accumulate(int64_t perm[], void* data) {
+static void* accumulate(int64_t perm[], void* data) {
     perm_list* list = malloc(sizeof(perm_list));
     for (int i = 0; i < CIRCUIT_SIZE; i++) list->seq[i] = perm[i];
     list->next = data;
     return list;
 }
 
-void extract(const perm_list* list, char* strs[], int perm_len) {
+static void extract(const perm_list* list, char* strs[], int perm_len) {
     for (int i = 0; list != NULL; list = list->next, i++) {
         for (int j = 0; j < perm_len; j++) strs[i][j] = '0' + list->seq[j];
         strs[i][perm_len] = '\0';
     }
 }
 
-int permcmp(const void* left, const void* right) {
+static int permcmp(const void* left, const void* right) {
     const char **s = (const char**)left, **t = (const char**)right;
     int x = atoi(*s), y = atoi(*t);
     return x - y;

@@ -27,10 +27,10 @@ typedef enum {
 } opcode;
 
 typedef enum {
-    NO_ERROR,
-    PC_OUT_OF_RANGE,
-    INVALID_OPCODE,
-    INVALID_MODE,
+    ERR_NONE,
+    ERR_PC_OUT_OF_RANGE,
+    ERR_INVALID_OPCODE,
+    ERR_INVALID_MODE,
 } error;
 
 typedef struct {
@@ -44,12 +44,9 @@ typedef struct {
     int trace;
 } vm;
 
-void init_vm(vm* vm);
 vm new_vm(void);
 vm make_vm(int64_t mem[], int mem_size);
 vm copy_vm(const vm* vm);
-void print_vm(const vm* vm);
-void step(vm* vm);
 void run(vm* vm);
 int64_t get_mem(vm* vm, int addr);
 void set_mem(vm* vm, int addr, int64_t val);

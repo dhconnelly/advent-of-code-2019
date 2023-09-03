@@ -4,7 +4,7 @@
 
 #include "vm.h"
 
-int execute(vm* vm, int64_t outputs[], int max_outputs) {
+static int execute(vm* vm, int64_t outputs[], int max_outputs) {
     int i = 0;
     do {
         run(vm);
@@ -27,7 +27,7 @@ int execute(vm* vm, int64_t outputs[], int max_outputs) {
     return i;
 }
 
-void day9_test1(void) {
+static void day9_test1(void) {
     printf("day9_test1\n");
     int64_t prog[] = {109,  1,   204, -1,  1001, 100, 1, 100,
                       1008, 100, 16,  101, 1006, 101, 0, 99};
@@ -39,7 +39,7 @@ void day9_test1(void) {
     }
 }
 
-void day9_test2(void) {
+static void day9_test2(void) {
     printf("day9_test2\n");
     int64_t prog[] = {1102, 34915192, 34915192, 7, 4, 7, 99, 0};
     vm vm = make_vm(prog, sizeof(prog) / sizeof(int64_t));
@@ -48,7 +48,7 @@ void day9_test2(void) {
     assert(outputs[0] == 1219070632396864);
 }
 
-void day9_test3(void) {
+static void day9_test3(void) {
     printf("day9_test3\n");
     int64_t prog[] = {104, 1125899906842624, 99};
     vm vm = make_vm(prog, sizeof(prog) / sizeof(int64_t));

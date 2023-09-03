@@ -36,14 +36,13 @@ int main(int argc, char* argv[]) {
         perror("day9");
         exit(1);
     }
-    vm vm = new_vm();
     int64_t data[1024];
     int len;
     if ((len = parse_intcode(f, data, 1024)) < 0) {
         perror("day9");
         exit(1);
     }
-    fill_table(vm.mem, data, 1024);
+    vm vm = make_vm(data, len);
     execute(copy_vm(&vm), 1);
     execute(copy_vm(&vm), 2);
 }

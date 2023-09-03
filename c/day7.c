@@ -36,29 +36,21 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    vm vm = new_vm();
     int64_t data[1024];
     int len;
     if ((len = parse_intcode(f, data, 1024)) < 0) {
         perror("day7");
         exit(1);
     }
-    fill_table(vm.mem, data, 1024);
 
-    acc acc1;
-    acc1.f = &run_series;
-    acc1.vm = vm;
-    acc1.input = 0;
-    acc1.max = ~0;
+    vm base = make_vm(data, len);
+
+    acc acc1 = {.f = &run_series, .vm = copy_vm(&base), .input = 0, .max = ~0};
     phase_sequence seq1 = {0, 1, 2, 3, 4};
     visit_permutations(seq1, 5, find_max, &acc1);
     printf("%lld\n", acc1.max);
 
-    acc acc2;
-    acc2.f = &run_loop;
-    acc2.vm = vm;
-    acc2.input = 0;
-    acc2.max = ~0;
+    acc acc2 = {.f = &run_loop, .vm = copy_vm(&base), .input = 0, .max = ~0};
     phase_sequence seq2 = {5, 6, 7, 8, 9};
     visit_permutations(seq2, 5, find_max, &acc2);
     printf("%lld\n", acc2.max);

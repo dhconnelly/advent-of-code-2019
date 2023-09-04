@@ -5,6 +5,12 @@
 
 void init_q(queue* q) { q->head = q->tail = NULL; }
 
+queue make_q(void) {
+    queue q;
+    init_q(&q);
+    return q;
+}
+
 int empty_q(queue* q) { return q->head == NULL; }
 
 static node* new_node(void* data) {

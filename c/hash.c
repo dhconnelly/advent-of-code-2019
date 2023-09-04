@@ -17,6 +17,12 @@ void init_table(hashtable* table) {
     for (int i = 0; i < HASHSIZE; i++) table->table[i] = NULL;
 }
 
+hashtable make_table(void) {
+    hashtable table;
+    init_table(&table);
+    return table;
+}
+
 void fill_table(hashtable* table, int64_t arr[], int len) {
     init_table(table);
     for (int i = 0; i < len; i++) table_set(table, i, arr[i]);

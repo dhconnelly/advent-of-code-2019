@@ -90,28 +90,6 @@ static pt2 find(hashtable* map, tile t) {
     assert(0);
 }
 
-static void print_map(hashtable* map, pt2 cur) {
-    static int ch[] = {
-        [FLOOR] = ' ',
-        [WALL] = '#',
-        [OXYGEN] = 'O',
-    };
-    rect lohi = bounds(map);
-    for (int row = lohi.hi.coords.y; row >= lohi.lo.coords.y; row--) {
-        for (int col = lohi.lo.coords.x; col <= lohi.hi.coords.x; col++) {
-            pt2 pos = make_pt(col, row);
-            if (pt_eq(pos, cur))
-                putchar('D');
-            else {
-                int64_t* c = table_get(map, pos.data);
-                int tile = (c == NULL) ? '?' : ch[*c];
-                putchar(tile);
-            }
-        }
-        putchar('\n');
-    }
-}
-
 typedef struct dist {
     pt2 pos;
     int dist;
@@ -125,24 +103,18 @@ bfs_node* new_node(pt2 pos, int dist) {
 }
 
 static hashtable bfs(hashtable* map, pt2 from) {
-    hashtable dists;
-    init_table(&dists);
+    hashtable dists = make_table();
     table_set(&dists, from.data, 0);
-    queue q;
-    init_q(&q);
+    queue q = make_q();
     append_q(&q, new_node(from, 0));
-    hashtable v;
-    init_table(&v);
-    table_set(&v, from.data, 1);
     pt2 nbrs[4];
     while (!empty_q(&q)) {
         bfs_node* front = pop_q(&q);
         get_nbrs(front->pos, nbrs);
         for (int i = 0; i < 4; i++) {
-            if (table_get(&v, nbrs[i].data)) continue;
+            if (table_get(&dists, nbrs[i].data)) continue;
             int64_t* tile = table_get(map, nbrs[i].data);
             if (!tile || !can_move(*tile)) continue;
-            table_set(&v, nbrs[i].data, 1);
             table_set(&dists, nbrs[i].data, front->dist + 1);
             append_q(&q, new_node(nbrs[i], front->dist + 1));
         }

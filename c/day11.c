@@ -91,19 +91,9 @@ void run_robot(robot* r) {
 }
 
 void print_tiles(hashtable* tiles) {
-    uint32_t* keys = table_keys(tiles);
-    int min_y = INT_MAX, max_y = INT_MIN, min_x = INT_MAX, max_x = INT_MIN;
-    for (int i = 0; i < table_size(tiles); i++) {
-        pt2 pt = pt_from_data(keys[i]);
-        if (pt.coords.y < min_y) min_y = pt.coords.y;
-        if (pt.coords.y > max_y) max_y = pt.coords.y;
-        if (pt.coords.x < min_x) min_x = pt.coords.x;
-        if (pt.coords.x > max_x) max_x = pt.coords.x;
-    }
-    free(keys);
-
-    for (int y = max_y; y >= min_y; y--) {
-        for (int x = min_x; x <= max_x; x++) {
+    rect lohi = bounds(tiles);
+    for (int y = lohi.hi.coords.y; y >= lohi.lo.coords.y; y--) {
+        for (int x = lohi.lo.coords.x; x <= lohi.hi.coords.x; x++) {
             color t = get_tile(tiles, make_pt(x, y));
             char ch = t == BLACK ? ' ' : '#';
             printf("%c", ch);

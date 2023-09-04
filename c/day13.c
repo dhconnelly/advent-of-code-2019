@@ -1,10 +1,58 @@
 #include <SDL2/SDL.h>
+#include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "parse.h"
+#include "vm.h"
+
+static int readint(vm* vm) {
+    assert(vm->state == VM_OUTPUT);
+    int output = vm->output;
+    run(vm);
+    return output;
+}
+
+enum {
+    TILE_EMPTY = 0,
+    TILE_WALL,
+    TILE_BLOCK,
+    TILE_PADDLE,
+    TILE_BALL,
+};
+
+char tile(int of) {
+    static char tiles[] = {
+        [TILE_EMPTY] = ' ',   //
+        [TILE_WALL] = '$',    //
+        [TILE_BLOCK] = '#',   //
+        [TILE_PADDLE] = '-',  //
+        [TILE_BALL] = 'o',    //
+    };
+    return tiles[of];
+}
+
+static int solve(int64_t data[], int len) {
+    vm vm = make_vm(data, len);
+    run(&vm);
+
+    int blocks = 0;
+
+    do {
+        int x = readint(&vm);
+        int y = readint(&vm);
+        int c = readint(&vm);
+        if (c == TILE_BLOCK) blocks++;
+    } while (vm.state != VM_HALTED);
+    printf("%d\n", blocks);
+
+    return EXIT_SUCCESS;
+}
+
 // thanks to:
 // https://github.com/xyproto/sdl2-examples/tree/3418f3845f8e131315a53ee038dfa76b56d3b16b/c89
-int play(void) {
+static int play(void) {
     SDL_Window* win;
     SDL_Renderer* ren;
     SDL_Surface* bmp;
@@ -47,6 +95,27 @@ int play(void) {
     return EXIT_SUCCESS;
 }
 
-int main(void) {
-    if (getenv("DAY13_PLAY")) return play();
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "usage: day13 file\n");
+        exit(1);
+    }
+
+    FILE* f = fopen(argv[1], "r");
+    if (f == NULL) {
+        perror("day13");
+        exit(1);
+    }
+
+    int64_t data[4096];
+    int len;
+    if ((len = parse_intcode(f, data, 4096)) < 0) {
+        perror("day13: failed to parse intcode");
+        exit(1);
+    }
+
+    if (getenv("DAY13_PLAY"))
+        return play();
+    else
+        return solve(data, len);
 }

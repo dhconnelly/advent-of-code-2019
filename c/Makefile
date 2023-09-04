@@ -81,11 +81,11 @@ target/day11: target/day11.o target/vm.o target/parse.o target/hash.o target/pt2
 	mkdir -p target
 	$(CC) $^ -o $@
 
-target/day13.o: day13.c vm.h parse.h hash.h pt2.h
+target/day13.o: day13.c vm.h parse.h
 	mkdir -p target
 	$(CC) -c $< -o $@
 
-target/day13: target/day13.o target/vm.o target/parse.o target/hash.o target/pt2.o
+target/day13: target/day13.o target/vm.o target/parse.o target/hash.o
 	mkdir -p target
 	$(CC) $^ -lSDL2main -lSDL2 -o $@
 

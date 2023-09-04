@@ -23,32 +23,45 @@ int64_t get_mem(vm* vm, int loc) {
 }
 
 static int64_t eval_arg(vm* vm, mode mode, int64_t arg_ptr) {
+    int64_t val;
     switch (mode) {
         case MODE_POS:
-            return get_mem(vm, get_mem(vm, arg_ptr));
+            val = get_mem(vm, get_mem(vm, arg_ptr));
+            break;
         case MODE_IMM:
-            return get_mem(vm, arg_ptr);
+            val = get_mem(vm, arg_ptr);
+            break;
         case MODE_REL:
-            return get_mem(vm, vm->relbase + get_mem(vm, arg_ptr));
+            val = get_mem(vm, vm->relbase + get_mem(vm, arg_ptr));
+            break;
         default:
             vm->state = VM_ERROR;
             vm->error = ERR_INVALID_MODE;
-            return 0;
+            val = 0;
+            break;
     }
+    if (getenv("VM_TRACE")) printf("arg = %ld\n", val);
+    return val;
 }
 
 static int64_t eval_dest(vm* vm, mode mode, int64_t arg_ptr) {
+    int64_t dest;
     switch (mode) {
         case MODE_POS:
-            return get_mem(vm, arg_ptr);
+            dest = get_mem(vm, arg_ptr);
+            break;
         case MODE_REL:
-            return vm->relbase + get_mem(vm, arg_ptr);
+            dest = vm->relbase + get_mem(vm, arg_ptr);
+            break;
         case MODE_IMM:
         default:
             vm->state = VM_ERROR;
             vm->error = ERR_INVALID_MODE;
-            return 0;
+            dest = 0;
+            break;
     }
+    if (getenv("VM_TRACE")) printf("dest = %ld\n", dest);
+    return dest;
 }
 
 void init_vm(vm* vm) {

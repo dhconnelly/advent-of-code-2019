@@ -33,12 +33,10 @@ char tile(int of) {
     return tiles[of];
 }
 
-static int solve(int64_t data[], int len) {
+static int part1(int64_t data[], int len) {
     vm vm = make_vm(data, len);
     run(&vm);
-
     int blocks = 0;
-
     do {
         int x = readint(&vm);
         int y = readint(&vm);
@@ -46,7 +44,49 @@ static int solve(int64_t data[], int len) {
         if (c == TILE_BLOCK) blocks++;
     } while (vm.state != VM_HALTED);
     printf("%d\n", blocks);
+    return EXIT_SUCCESS;
+}
 
+static void writeint(vm* vm, int val) {
+    assert(vm->state == VM_INPUT);
+    vm->input = val;
+    run(vm);
+}
+
+static int sign(int x) {
+    if (x < 0) return -1;
+    if (x > 0) return 1;
+    return 0;
+}
+
+static int part2(int64_t data[], int len) {
+    vm vm = make_vm(data, len);
+    set_mem(&vm, 0, 2);
+    run(&vm);
+    int ball_x = -1, paddle_x = -1;
+    int score = 0;
+    do {
+        switch (vm.state) {
+            case VM_INPUT:
+                writeint(&vm, ball_x != -1 ? sign(ball_x - paddle_x) : 0);
+                break;
+            case VM_OUTPUT: {
+                int x = readint(&vm);
+                int y = readint(&vm);
+                int c = readint(&vm);
+                if (x == -1 && y == 0)
+                    score = c;
+                else if (c == TILE_PADDLE)
+                    paddle_x = x;
+                else if (c == TILE_BALL)
+                    ball_x = x;
+                break;
+            }
+            default:
+                assert(0);
+        }
+    } while (vm.state != VM_HALTED);
+    printf("%d\n", score);
     return EXIT_SUCCESS;
 }
 
@@ -114,8 +154,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    if (getenv("DAY13_PLAY"))
-        return play();
-    else
-        return solve(data, len);
+    if (getenv("DAY13_PLAY")) return play();
+    part1(data, len);
+    part2(data, len);
 }

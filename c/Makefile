@@ -6,8 +6,8 @@ endif
 
 CC=cc $(CC_FLAGS)
 
-all: target/day2 target/day5 target/day7 target/day9 target/day11 target/test
-runall: day2 day5 day7 day9 day11
+all: target/day2 target/day5 target/day7 target/day9 target/day11 target/day13 target/test
+runall: day2 day5 day7 day9 day11 day13
 
 target/parse.o: parse.c parse.h
 	mkdir -p target
@@ -80,6 +80,14 @@ target/day11.o: day11.c vm.h parse.h
 target/day11: target/day11.o target/vm.o target/parse.o target/hash.o target/pt2.o
 	mkdir -p target
 	$(CC) $^ -o $@
+
+target/day13.o: day13.c vm.h parse.h hash.h pt2.h
+	mkdir -p target
+	$(CC) -c $< -o $@
+
+target/day13: target/day13.o target/vm.o target/parse.o target/hash.o target/pt2.o
+	mkdir -p target
+	$(CC) $^ -lSDL2main -lSDL2 -o $@
 
 target/test.o: test.c
 	mkdir -p target

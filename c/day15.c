@@ -6,6 +6,7 @@
 #include "hash.h"
 #include "parse.h"
 #include "pt2.h"
+#include "queue.h"
 #include "vm.h"
 
 typedef struct {
@@ -111,52 +112,16 @@ static void print_map(hashtable* map, pt2 cur) {
     }
 }
 
-typedef struct node {
+typedef struct dist {
     pt2 pos;
     int dist;
-    struct node* next;
-} node;
+} bfs_node;
 
-node* new_node(pt2 pos, int dist) {
-    node* nd = malloc(sizeof(node));
+bfs_node* new_node(pt2 pos, int dist) {
+    bfs_node* nd = malloc(sizeof(bfs_node));
     nd->pos = pos;
     nd->dist = dist;
-    nd->next = NULL;
     return nd;
-}
-
-typedef struct {
-    node *head, *tail;
-} queue;
-
-void init_q(queue* q) { q->head = q->tail = NULL; }
-
-void free_q(queue* q) {
-    node* nd = q->head;
-    while (nd != NULL) {
-        node* next = nd->next;
-        free(nd);
-        nd = next;
-    }
-}
-
-int empty_q(queue* q) { return q->head == NULL; }
-
-void append_q(queue* q, pt2 pos, int dist) {
-    if (empty_q(q)) {
-        q->head = q->tail = new_node(pos, dist);
-    } else {
-        q->tail->next = new_node(pos, dist);
-        q->tail = q->tail->next;
-    }
-}
-
-node* pop_q(queue* q) {
-    assert(!empty_q(q));
-    node* front = q->head;
-    q->head = q->head->next;
-    if (empty_q(q)) q->tail = NULL;
-    return front;
 }
 
 static hashtable bfs(hashtable* map, pt2 from) {
@@ -165,13 +130,13 @@ static hashtable bfs(hashtable* map, pt2 from) {
     table_set(&dists, from.data, 0);
     queue q;
     init_q(&q);
-    append_q(&q, from, 0);
+    append_q(&q, new_node(from, 0));
     hashtable v;
     init_table(&v);
     table_set(&v, from.data, 1);
     pt2 nbrs[4];
     while (!empty_q(&q)) {
-        node* front = pop_q(&q);
+        bfs_node* front = pop_q(&q);
         get_nbrs(front->pos, nbrs);
         for (int i = 0; i < 4; i++) {
             if (table_get(&v, nbrs[i].data)) continue;
@@ -179,11 +144,10 @@ static hashtable bfs(hashtable* map, pt2 from) {
             if (!tile || !can_move(*tile)) continue;
             table_set(&v, nbrs[i].data, 1);
             table_set(&dists, nbrs[i].data, front->dist + 1);
-            append_q(&q, nbrs[i], front->dist + 1);
+            append_q(&q, new_node(nbrs[i], front->dist + 1));
         }
         free(front);
     }
-    free_q(&q);
     return dists;
 }
 

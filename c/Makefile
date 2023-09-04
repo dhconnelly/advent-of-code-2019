@@ -6,7 +6,7 @@ endif
 
 CC=cc $(CC_FLAGS)
 
-all: target/day2 target/day5 target/day7 target/day9 target/day11 target/day13 target/test target/day15
+all: target/day2 target/day5 target/day7 target/day9 target/day11 target/day13 target/test target/day15 target/queue.o
 runall: day2 day5 day7 day9 day11 day13 day15
 
 target/parse.o: parse.c parse.h
@@ -105,17 +105,21 @@ target/hash_test.o: hash_test.c hash.h
 	mkdir -p target
 	$(CC) -c $< -o $@
 
-target/day15.o: day15.c hash.h pt2.h vm.h parse.h
+target/day15.o: day15.c hash.h pt2.h vm.h parse.h queue.h
 	mkdir -p target
 	$(CC) -c $< -o $@
 
-target/day15: target/day15.o target/hash.o target/vm.o target/parse.o target/pt2.o
+target/day15: target/day15.o target/hash.o target/vm.o target/parse.o target/pt2.o target/queue.o
 	mkdir -p target
 	$(CC) $^ -o $@
 
 target/test: target/test.o target/day2_test.o target/day5_test.o target/vm.o target/parse.o target/day7_test.o target/amp.o target/comb.o target/hash.o target/hash_test.o target/day9_test.o target/pt2.o
 	mkdir -p target
 	$(CC) $^ -o $@
+
+target/queue.o: queue.c queue.h
+	mkdir -p target
+	$(CC) -c $< -o $@
 
 test: target/test
 	./target/test

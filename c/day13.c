@@ -1,4 +1,3 @@
-#include <SDL2/SDL.h>
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -90,51 +89,6 @@ static int part2(int64_t data[], int len) {
     return EXIT_SUCCESS;
 }
 
-// thanks to:
-// https://github.com/xyproto/sdl2-examples/tree/3418f3845f8e131315a53ee038dfa76b56d3b16b/c89
-static int play(void) {
-    SDL_Window* win;
-    SDL_Renderer* ren;
-    SDL_Surface* bmp;
-    SDL_Texture* tex;
-    int i;
-
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-        fprintf(stderr, "SDL_Init Error: %s\n", SDL_GetError());
-        return EXIT_FAILURE;
-    }
-
-    win =
-        SDL_CreateWindow("Hello World!", 100, 100, 620, 387, SDL_WINDOW_SHOWN);
-    if (win == NULL) {
-        fprintf(stderr, "SDL_CreateWindow Error: %s\n", SDL_GetError());
-        return EXIT_FAILURE;
-    }
-
-    ren = SDL_CreateRenderer(
-        win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (ren == NULL) {
-        fprintf(stderr, "SDL_CreateRenderer Error: %s\n", SDL_GetError());
-        SDL_DestroyWindow(win);
-        SDL_Quit();
-        return EXIT_FAILURE;
-    }
-
-    for (i = 0; i < 20; i++) {
-        SDL_RenderClear(ren);
-        SDL_RenderCopy(ren, tex, NULL, NULL);
-        SDL_RenderPresent(ren);
-        SDL_Delay(100);
-    }
-
-    SDL_DestroyTexture(tex);
-    SDL_DestroyRenderer(ren);
-    SDL_DestroyWindow(win);
-    SDL_Quit();
-
-    return EXIT_SUCCESS;
-}
-
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         fprintf(stderr, "usage: day13 file\n");
@@ -154,7 +108,6 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    if (getenv("DAY13_PLAY")) return play();
     part1(data, len);
     part2(data, len);
 }

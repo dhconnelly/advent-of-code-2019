@@ -2,7 +2,6 @@ prerequisites:
 
     - a c compiler
     - gnu make
-    - SDL2
 
 to run tests:
 
@@ -19,7 +18,3 @@ directory $REMOTE_DEPLOY_PATH:
 
 your local and remote ssh configs should allow login without a password
 with `ssh $REMOTE_DEPLOY_HOST`, i.e. using certificates
-
-to play breakout:
-
-    DAY13_PLAY=1 make day13

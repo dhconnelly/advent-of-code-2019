@@ -87,7 +87,7 @@ target/day13.o: day13.c vm.h parse.h
 
 target/day13: target/day13.o target/vm.o target/parse.o target/hash.o
 	mkdir -p target
-	$(CC) $^ -lSDL2main -lSDL2 -o $@
+	$(CC) $^ -o $@
 
 target/test.o: test.c
 	mkdir -p target

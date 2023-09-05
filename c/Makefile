@@ -121,6 +121,14 @@ target/day23: target/day23.o target/vm.o target/parse.o target/hash.o
 	mkdir -p target
 	$(CC) $^ -o $@
 
+target/day25.o: day25.c parse.h vm.h
+	mkdir -p target
+	$(CC) -c $< -o $@
+
+target/day25: target/day25.o target/vm.o target/parse.o target/hash.o
+	mkdir -p target
+	$(CC) $^ -o $@
+
 target/test: target/test.o target/day2_test.o target/day5_test.o target/vm.o target/parse.o target/day7_test.o target/amp.o target/comb.o target/hash.o target/hash_test.o target/day9_test.o target/pt2.o
 	mkdir -p target
 	$(CC) $^ -o $@

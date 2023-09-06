@@ -158,8 +158,8 @@ int main(int argc, char* argv[]) {
     dfs(&explorer);
     pt2 oxy = find(&explorer.map, OXYGEN);
     hashtable dists = bfs(&explorer.map, make_pt(0, 0));
-    printf("%ld\n", *table_get(&dists, oxy.data));
+    printf("%lld\n", *table_get(&dists, oxy.data));
 
     hashtable oxy_dists = bfs(&explorer.map, oxy);
-    printf("%ld\n", max(&oxy_dists));
+    printf("%lld\n", max(&oxy_dists));
 }

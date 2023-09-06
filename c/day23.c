@@ -38,7 +38,7 @@ int network_idle(netvm vms[]) {
     return 1;
 }
 
-int64_t part1(int64_t data[], int data_len, int enable_nat) {
+int64_t network(int64_t data[], int data_len, int enable_nat) {
     // initialize and prime the vms
     netvm vms[NUM_VMS];
     packet nat;
@@ -122,6 +122,6 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    printf("%ld\n", part1(data, len, 0));
-    printf("%ld\n", part1(data, len, 1));
+    printf("%lld\n", network(data, len, 0));
+    printf("%lld\n", network(data, len, 1));
 }

@@ -20,5 +20,5 @@ echo "deploying to $HOST:$ROOT..." &&
     echo "building on $HOST..." &&
     ssh $HOST "cd $ROOT && make clean && make all" &&
     echo "executing on $HOST..." &&
-    ssh $HOST "cd $ROOT && time make runall" &&
+    ssh $HOST "cd $ROOT && time ./test.sh" &&
     echo "done."

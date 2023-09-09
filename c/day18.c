@@ -65,13 +65,6 @@ static void parse_grid(FILE* f, grid* g) {
     }
 }
 
-static void print_grid(grid* g) {
-    for (int i = 0; i < g->rows; i++) {
-        for (int j = 0; j < g->cols; j++) putchar(g->g[i][j].ch);
-        putchar('\n');
-    }
-}
-
 typedef struct {
     pt2 pos;
     int dist;
@@ -162,15 +155,6 @@ static adjmat all_dists(grid* g) {
     return adj;
 }
 
-void print_all_dists(adjmat* adj) {
-    for (int i = 0; i < ADJ_LEN; i++) {
-        for (int j = 0; j < ADJ_LEN; j++) {
-            int d = adj->d[i][j];
-            if (d > -1) printf("%c -> %c = %d\n", adjval(i), adjval(j), d);
-        }
-    }
-}
-
 void collect(adjmat* adj, int idx) {
     int id, jd;
     for (int i = 0; i < ADJ_LEN - 1; i++) {
@@ -212,12 +196,6 @@ static uint32_t collect_key(uint32_t keys_needed, int key_idx) {
 
 static uint64_t memo_key(uint32_t l, uint32_t r) {
     return (((uint64_t)l) << 32) | (uint64_t)r;
-}
-
-static void print_keys(uint32_t keys) {
-    for (int i = 0; i < 32; i++)
-        if (((1 << i) & keys) > 0) printf("%c ", adjval(i));
-    putchar('\n');
 }
 
 static int64_t collect_all(adjmat* adj, uint32_t from_idx, uint32_t keys_needed,
@@ -262,5 +240,5 @@ int main(int argc, char* argv[]) {
     parse_grid(f, &g);
     adjmat dists = all_dists(&g);
     hashtable memo = make_table();
-    printf("%ld\n", collect_all(&dists, adjindex('@'), all_keys(&g), &memo));
+    printf("%lld\n", collect_all(&dists, adjindex('@'), all_keys(&g), &memo));
 }

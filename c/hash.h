@@ -24,5 +24,6 @@ void table_copy(hashtable* into, const hashtable* from);
 int table_size(hashtable* table);
 uint32_t* table_keys(hashtable* table);
 hashtable make_table(void);
+hashtable* new_table(void);
 
 #endif  // HASH_H_

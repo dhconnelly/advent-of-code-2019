@@ -4,14 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void print_table(hashtable table) {
-    for (int i = 0; i < HASHSIZE; i++) {
-        for (hashnode* node = table.table[i]; node != NULL; node = node->next) {
-            printf("%d = %lld\n", node->key, node->val);
-        }
-    }
-}
-
 void init_table(hashtable* table) {
     table->size = 0;
     for (int i = 0; i < HASHSIZE; i++) table->table[i] = NULL;
@@ -20,6 +12,12 @@ void init_table(hashtable* table) {
 hashtable make_table(void) {
     hashtable table;
     init_table(&table);
+    return table;
+}
+
+hashtable* new_table(void) {
+    hashtable* table = malloc(sizeof(hashtable));
+    init_table(table);
     return table;
 }
 

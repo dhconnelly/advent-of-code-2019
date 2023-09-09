@@ -139,6 +139,7 @@ static void shortest_dists(grid* g, pt2 from, adjmat* adj) {
             table_set(&v, nbr.data, 1);
             tile t = g->g[nbr.coords.y][nbr.coords.x];
             int dist = front->dist + 1;
+            // TODO: don't care about distance to doors
             if (t.typ == KEY || t.typ == DOOR)
                 dists[adjindex(at(g, nbr))] = dist;
             if (t.typ == PASSAGE || t.typ == ENTRANCE)
@@ -176,7 +177,9 @@ void collect(adjmat* adj, int idx) {
         if (i == idx || (id = adj->d[idx][i]) < 0) continue;
         for (int j = i + 1; j < ADJ_LEN; j++) {
             if (j == idx || (jd = adj->d[idx][j]) < 0) continue;
-            adj->d[i][j] = adj->d[j][i] = id + jd;
+            if (adj->d[i][j] < 0 || id + jd < adj->d[i][j]) {
+                adj->d[i][j] = adj->d[j][i] = id + jd;
+            }
         }
     }
     for (int i = 0; i < ADJ_LEN; i++) {
@@ -184,45 +187,62 @@ void collect(adjmat* adj, int idx) {
     }
 }
 
-uint32_t all_keys(adjmat* adj) {
+uint32_t all_keys(grid* g) {
     uint32_t keys = 0;
-    for (char key = 'a'; key <= 'z'; key++) {
-        int key_idx = adjindex(key);
-        for (int i = 0; i < ADJ_LEN; i++) {
-            if (adj->d[i][key_idx] > 0) keys |= (1 << key_idx);
+    for (int row = 0; row < g->rows; row++) {
+        for (int col = 0; col < g->cols; col++) {
+            if (g->g[row][col].typ == KEY)
+                keys |= (1 << adjindex(g->g[row][col].ch));
         }
     }
     return keys;
 }
 
-int is_key(int idx) { return islower(adjval(idx)); }
-int is_door(int idx) { return isupper(adjval(idx)); }
-int need_key(int door_idx, uint32_t keys_needed) {
+static int is_key(int idx) { return islower(adjval(idx)); }
+static int is_door(int idx) { return isupper(adjval(idx)); }
+static int need_key(int door_idx, uint32_t keys_needed) {
     char door = adjval(door_idx);
     char key = 'a' + (door - 'A');
     int key_idx = adjindex(key);
     return ((1 << key_idx) & keys_needed) > 0;
 }
-uint32_t collect_key(uint32_t keys_needed, int key_idx) {
+static uint32_t collect_key(uint32_t keys_needed, int key_idx) {
     return keys_needed & ~(1 << key_idx);
 }
 
-int collect_all(adjmat* adj, int from_idx, uint32_t keys_needed) {
-    adjmat scratch;
-    int min = INT_MAX;
+static uint64_t memo_key(uint32_t l, uint32_t r) {
+    return (((uint64_t)l) << 32) | (uint64_t)r;
+}
+
+static void print_keys(uint32_t keys) {
+    for (int i = 0; i < 32; i++)
+        if (((1 << i) & keys) > 0) printf("%c ", adjval(i));
+    putchar('\n');
+}
+
+static int64_t collect_all(adjmat* adj, uint32_t from_idx, uint32_t keys_needed,
+                           hashtable* memo) {
     if (keys_needed == 0) return 0;
-    for (int d, i = 0; i < ADJ_LEN; i++) {
+    uint64_t key = memo_key(from_idx, keys_needed);
+    int64_t* memo_val = table_get(memo, key);
+    if (memo_val != NULL) return *memo_val;
+    adjmat scratch;
+    int64_t min = INT64_MAX;
+    for (int64_t d, i = 0; i < ADJ_LEN; i++) {
         if (i == from_idx || (d = adj->d[from_idx][i]) < 0) continue;
         if (is_door(i) && need_key(i, keys_needed)) continue;
         clone(&scratch, adj);
         collect(&scratch, i);
-        int sub_dist = collect_all(
-            &scratch, i, is_key(i) ? collect_key(keys_needed, i) : keys_needed);
+        int64_t sub_dist = collect_all(
+            &scratch, i, is_key(i) ? collect_key(keys_needed, i) : keys_needed,
+            memo);
         if (sub_dist < 0) continue;
-        int total_dist = sub_dist + adj->d[from_idx][i];
+        int64_t total_dist = sub_dist + d;
         if (total_dist < min) min = total_dist;
     }
-    return (min == INT_MAX) ? -1 : min;
+    int64_t result = (min == INT64_MAX) ? -1 : min;
+    table_set(memo, key, result);
+    return result;
 }
 
 int main(int argc, char* argv[]) {
@@ -240,7 +260,7 @@ int main(int argc, char* argv[]) {
     grid g;
     init_grid(&g);
     parse_grid(f, &g);
-    print_grid(&g);
     adjmat dists = all_dists(&g);
-    printf("%d\n", collect_all(&dists, adjindex('@'), all_keys(&dists)));
+    hashtable memo = make_table();
+    printf("%ld\n", collect_all(&dists, adjindex('@'), all_keys(&g), &memo));
 }

@@ -37,13 +37,13 @@ void table_copy(hashtable* into, const hashtable* from) {
     }
 }
 
-static uint16_t hash(uint32_t key) {
+static uint16_t hash(uint64_t key) {
     uint16_t idx;
     for (idx = 0; key != 0; key /= 10) idx = (key % 10) + 31 * idx;
     return idx % HASHSIZE;
 }
 
-int64_t* table_get(const hashtable* table, uint32_t key) {
+int64_t* table_get(const hashtable* table, uint64_t key) {
     for (hashnode* node = table->table[hash(key)]; node != NULL;
          node = node->next) {
         if (node->key == key) {
@@ -53,7 +53,7 @@ int64_t* table_get(const hashtable* table, uint32_t key) {
     return NULL;
 }
 
-void table_set(hashtable* table, uint32_t key, int64_t val) {
+void table_set(hashtable* table, uint64_t key, int64_t val) {
     hashnode** node;
     for (node = &table->table[hash(key)]; *node != NULL && (*node)->key != key;
          node = &(*node)->next)
@@ -72,8 +72,8 @@ void table_set(hashtable* table, uint32_t key, int64_t val) {
 
 int table_size(hashtable* table) { return table->size; }
 
-uint32_t* table_keys(hashtable* table) {
-    uint32_t* keys = malloc(table->size * sizeof(uint32_t));
+uint64_t* table_keys(hashtable* table) {
+    uint64_t* keys = malloc(table->size * sizeof(uint64_t));
     int i = 0;
     for (int bucket = 0; bucket < HASHSIZE; bucket++) {
         for (hashnode* node = table->table[bucket]; node != NULL;

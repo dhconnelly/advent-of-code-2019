@@ -26,7 +26,7 @@ void get_nbrs(pt2 pt, pt2 nbrs[4]) {
 }
 
 rect bounds(hashtable* map) {
-    uint32_t* keys = table_keys(map);
+    uint64_t* keys = table_keys(map);
     rect lohi;
     lohi.lo.coords.y = INT16_MAX, lohi.hi.coords.y = INT16_MIN,
     lohi.lo.coords.x = INT16_MAX, lohi.hi.coords.x = INT16_MIN;

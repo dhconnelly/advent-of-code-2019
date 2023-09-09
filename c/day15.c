@@ -79,7 +79,7 @@ static void dfs(explorer* explorer) {
 }
 
 static pt2 find(hashtable* map, tile t) {
-    uint32_t* keys = table_keys(map);
+    uint64_t* keys = table_keys(map);
     for (int i = 0; i < table_size(map); i++) {
         if (*table_get(map, keys[i]) == t) {
             pt2 pos = pt_from_data(keys[i]);
@@ -124,7 +124,7 @@ static hashtable bfs(hashtable* map, pt2 from) {
 }
 
 static int64_t max(hashtable* table) {
-    uint32_t* keys = table_keys(table);
+    uint64_t* keys = table_keys(table);
     int64_t max = INT64_MIN;
     for (int i = 0; i < table_size(table); i++) {
         int64_t val = *table_get(table, keys[i]);

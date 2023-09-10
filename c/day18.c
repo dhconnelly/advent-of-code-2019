@@ -81,18 +81,20 @@ static char at(grid* g, pt2 from) {
     return g->g[from.coords.y][from.coords.x].ch;
 }
 
-#define ADJ_LEN (26 + 26 + 1)
+#define ADJ_LEN (26 + 26 + 5)
 
 static int adjindex(char ch) {
     if (ch >= 'a' && ch <= 'z') return ch - 'a';
     if (ch >= 'A' && ch <= 'Z') return ch - 'A' + 26;
-    return 52;
+    if (ch == '@') return 52;
+    return 53 + ch - '1';
 }
 
 static char adjval(int idx) {
     if (idx >= 0 && idx < 26) return 'a' + idx;
     if (idx >= 26 && idx < 52) return 'A' + idx - 26;
-    return '@';
+    if (idx == 52) return '@';
+    return idx - 53 + '1';
 }
 
 typedef struct {
@@ -198,29 +200,72 @@ static uint64_t memo_key(uint32_t l, uint32_t r) {
     return (((uint64_t)l) << 32) | (uint64_t)r;
 }
 
-static int64_t collect_all(adjmat* adj, uint32_t from_idx, uint32_t keys_needed,
-                           hashtable* memo) {
+typedef union {
+    struct {
+        uint8_t idx[4];
+    } pos;
+    uint32_t data;
+} pos;
+
+static pos empty_pos(void) {
+    pos pos;
+    for (int i = 0; i < 4; i++) pos.pos.idx[i] = 0;
+    return pos;
+}
+
+static pos move_robots(pos robots, int robot, int idx) {
+    robots.pos.idx[robot] = idx;
+    return robots;
+}
+
+static int64_t collect_all(adjmat* adj, pos robots, int robots_len,
+                           uint32_t keys_needed, hashtable* memo) {
     if (keys_needed == 0) return 0;
-    uint64_t key = memo_key(from_idx, keys_needed);
+    uint64_t key = memo_key(robots.data, keys_needed);
     int64_t* memo_val = table_get(memo, key);
     if (memo_val != NULL) return *memo_val;
     adjmat scratch;
     int64_t min = INT64_MAX;
-    for (int64_t d, i = 0; i < ADJ_LEN; i++) {
-        if (i == from_idx || (d = adj->d[from_idx][i]) < 0) continue;
-        if (is_door(i) && need_key(i, keys_needed)) continue;
-        clone(&scratch, adj);
-        collect(&scratch, i);
-        int64_t sub_dist = collect_all(
-            &scratch, i, is_key(i) ? collect_key(keys_needed, i) : keys_needed,
-            memo);
-        if (sub_dist < 0) continue;
-        int64_t total_dist = sub_dist + d;
-        if (total_dist < min) min = total_dist;
+    for (int j = 0; j < robots_len; j++) {
+        int from_idx = robots.pos.idx[j];
+        for (int64_t d, i = 0; i < ADJ_LEN; i++) {
+            if (i == from_idx || (d = adj->d[from_idx][i]) < 0) continue;
+            if (is_door(i) && need_key(i, keys_needed)) continue;
+            clone(&scratch, adj);
+            collect(&scratch, i);
+            int64_t sub_dist = collect_all(
+                &scratch, move_robots(robots, j, i), robots_len,
+                is_key(i) ? collect_key(keys_needed, i) : keys_needed, memo);
+            if (sub_dist < 0) continue;
+            int64_t total_dist = sub_dist + d;
+            if (total_dist < min) min = total_dist;
+        }
     }
     int64_t result = (min == INT64_MAX) ? -1 : min;
     table_set(memo, key, result);
     return result;
+}
+
+static pt2 find(grid* g, tile_type typ) {
+    for (int row = 0; row < g->rows; row++)
+        for (int col = 0; col < g->cols; col++)
+            if (g->g[row][col].typ == typ) return make_pt(col, row);
+    assert(0);
+}
+
+void split(grid* g) {
+    pt2 split = find(g, ENTRANCE);
+    int col = split.coords.x, row = split.coords.y;
+    for (int i = -1; i <= 1; i++)
+        g->g[row + i][col].ch = g->g[row + i][col].typ = WALL;
+    for (int i = -1; i <= 1; i++)
+        g->g[row][col + i].ch = g->g[row][col + i].typ = WALL;
+    g->g[row - 1][col - 1].typ = g->g[row - 1][col + 1].typ =
+        g->g[row + 1][col - 1].typ = g->g[row + 1][col + 1].typ = ENTRANCE;
+    g->g[row - 1][col - 1].ch = '1';
+    g->g[row - 1][col + 1].ch = '2';
+    g->g[row + 1][col - 1].ch = '3';
+    g->g[row + 1][col + 1].ch = '4';
 }
 
 int main(int argc, char* argv[]) {
@@ -239,6 +284,18 @@ int main(int argc, char* argv[]) {
     init_grid(&g);
     parse_grid(f, &g);
     adjmat dists = all_dists(&g);
+    pos robots = empty_pos();
+    robots.pos.idx[0] = adjindex('@');
     hashtable memo = make_table();
-    printf("%lld\n", collect_all(&dists, adjindex('@'), all_keys(&g), &memo));
+    printf("%lld\n", collect_all(&dists, robots, 1, all_keys(&g), &memo));
+
+    split(&g);
+    dists = all_dists(&g);
+    robots = empty_pos();
+    robots.pos.idx[0] = adjindex('1');
+    robots.pos.idx[1] = adjindex('2');
+    robots.pos.idx[2] = adjindex('3');
+    robots.pos.idx[3] = adjindex('4');
+    memo = make_table();
+    printf("%lld\n", collect_all(&dists, robots, 4, all_keys(&g), &memo));
 }

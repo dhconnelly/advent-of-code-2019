@@ -1,7 +1,7 @@
 ifdef DEBUG
-	CC_FLAGS=-g -Werror
+	CC_FLAGS=-g -pg -Werror
 else
-	CC_FLAGS=-Werror
+	CC_FLAGS=-Ofast -Werror
 endif
 
 CC=cc $(CC_FLAGS)

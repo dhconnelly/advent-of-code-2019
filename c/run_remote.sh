@@ -16,9 +16,18 @@ ROOT=deploy/advent-of-code-2019
 echo "deploying to $HOST:$ROOT..." &&
     make clean &&
     ssh $HOST "mkdir -p $ROOT" &&
-    scp -r * $HOST:$ROOT/ &&
+    scp -r * $HOST:$ROOT/
+
+CMD=$1
+
+if [ -z "$CMD" ]; then
     echo "building on $HOST..." &&
     ssh $HOST "cd $ROOT && make clean && make all" &&
     echo "executing on $HOST..." &&
     ssh $HOST "cd $ROOT && time ./test.sh" &&
     echo "done."
+else
+    echo "executing on $HOST: $CMD" &&
+    ssh $HOST "cd $ROOT && time $CMD" &&
+    echo "done."
+fi
